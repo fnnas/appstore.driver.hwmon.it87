@@ -1,0 +1,55 @@
+#!/bin/bash
+
+if [[ "$1" != "status" ]];then
+    echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t" $0 $*
+fi
+
+PACKAGE_BASE=${TRIM_APPDEST}
+
+supportKernelList=( "6.12.18-trim")
+
+nowKernelVer=$(uname -r)
+nowKernelBuildNum=$(uname -v | grep -oP '(?<=#)\d+')
+
+case $1 in
+start)
+    uname -a
+    echo "kernel_inf ${nowKernelVer} ${nowKernelBuildNum}"
+
+    if [[ " ${supportKernelList[@]} " =~ " ${nowKernelVer} " ]]; then
+        echo "${nowKernelVer} in supportKernelList"
+    else
+        echo "${nowKernelVer} not in supportKernelList"
+		exit 1
+    fi
+
+    case "$nowKernelVer" in
+
+        6.12.18-trim)
+            echo "debug 6.12.18-trim"
+            mkdir -p /lib/modules/6.12.18-trim/updates/dkms/it87
+            cp -rf ${PACKAGE_BASE}/app/it87_6.12.18-trim_3/* /lib/modules/6.12.18-trim/updates/dkms/it87/
+            ;;
+
+        *)
+    esac
+
+    modprobe -r -v it87 || echo "unload it87 failed"
+    depmod
+    modprobe -v it87 || echo "load it87 faild"
+
+    ;;
+stop)
+  modprobe -r -v it87 || echo "unload it87 failed"
+
+    ;;
+status)
+    if [ ! -d "/lib/modules/$(uname -r)/updates/dkms/it87" ]; then
+        echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t" $0 $*
+        exit 3
+    fi
+    ;;
+*)
+    exit 1
+    ;;
+esac
