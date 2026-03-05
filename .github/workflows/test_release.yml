@@ -18,8 +18,8 @@ on:
 
 env:
   proj_name: "ite-it87"
-  target_commit_sha: "60d9def"
-  this_pack_version: "1.0.0"
+  target_commit_sha: "d17546bc"
+  this_pack_version: "1.0.1"
 jobs:
   setup:
     runs-on: ubuntu-latest

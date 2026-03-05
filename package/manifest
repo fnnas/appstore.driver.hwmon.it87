@@ -1,6 +1,6 @@
-version="1.0.0"
+version="1.0.1"
 appname="ite-it87_driver"
-desc=it87及it86系列传感器芯片树外驱动<br>适配内核<br>6.12.18-trim_3、6.12.18-trim_5<br>该驱动由飞牛社区用户提供，由飞牛社区用户自行维护<br>如遇问题请直接向飞牛社区用户进行反馈，反馈时请提供导出的日志
+desc=it87及it86系列传感器芯片树外驱动d17546bc<br>适配内核<br>6.12.18-trim_3、6.12.18-trim_5<br>该驱动由飞牛社区用户提供，由飞牛社区用户自行维护<br>如遇问题请直接向飞牛社区用户进行反馈，反馈时请提供导出的日志
 display_name="ite-it87"
 arch="x86_64"
 maintainer="frankcrawford"
@@ -8,7 +8,7 @@ maintainer_url="https://github.com/frankcrawford/it87"
 distributor="GreenDamTan"
 distributor_url=""
 os_min_version="0.9.18"
-changelog="同步60d9def版本"
+changelog="同步d17546bc版本"
 source="thirdparty"
 thirdparty="yes"
 install_type="root"

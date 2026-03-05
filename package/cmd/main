@@ -20,7 +20,8 @@ start)
         echo "${nowKernelVer} in supportKernelList"
     else
         echo "${nowKernelVer} not in supportKernelList"
-		exit 1
+        echo "Supported versions: ${supportKernelList[*]}"
+        exit 1
     fi
 
     case "$nowKernelVer" in
@@ -36,7 +37,7 @@ start)
 
     modprobe -r -v it87 || echo "unload it87 failed"
     depmod
-    modprobe -v it87 || echo "load it87 faild"
+    modprobe -v it87 || echo "load it87 failed"
 
     ;;
 stop)

@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Check out repository code
         run: |
-          git clone https://github.com/frankcrawford/it87.git
+          git clone https://github.com/fnnas/it87.git
           cd it87 && git reset --hard "${{ inputs.target_commit_sha }}"
       - name: build ko
         run: |
