@@ -19,7 +19,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "d17546bc"
-  this_pack_version: "1.0.1"
+  this_pack_version: "1.0.2"
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -36,9 +36,19 @@ jobs:
     with:
       proj_name: ${{ needs.setup.outputs.proj_name }}
       target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
+  build_6-18-6-trim-297:
+    uses: ./.github/workflows/kernel-6.18.6-trim-297-amd64.yml
+    secrets: inherit
+    needs:
+      - setup
+    with:
+      proj_name: ${{ needs.setup.outputs.proj_name }}
+      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
+
   pack_app_tgz:
     needs:
       - build_6-12-18-trim-3
+      - build_6-18-6-trim-297
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -48,6 +58,12 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.12.18-trim_3
           path: app/app/
+      - name: restore 6-12-18-trim-3
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.proj_name }}-6.18.6-trim-297-amd64
+          path: app/app/
+
       - name: 打包app.tgz
         run: |
           cd app/
