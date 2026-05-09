@@ -41,7 +41,16 @@ start)
         6.18.18-trim)
             echo "debug 6.18.18-trim"
             mkdir -p /lib/modules/6.18.18-trim/updates/dkms/it87
-            cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-427-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
+            if [[ ! "$nowKernelBuildNum" =~ ^[0-9]+$ ]]; then
+                echo "Unsupported build number for ${nowKernelVer}: ${nowKernelBuildNum}"
+                exit 1
+            fi
+
+            if (( nowKernelBuildNum < 570 )); then
+                cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-427-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
+            else
+                cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-570-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
+            fi
             ;;
         *)
     esac
