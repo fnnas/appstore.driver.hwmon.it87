@@ -48,8 +48,10 @@ start)
 
             if (( nowKernelBuildNum < 570 )); then
                 cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-427-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
-            else
+            elif (( nowKernelBuildNum < 587 )); then
                 cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-570-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
+            else
+                cp -rf ${PACKAGE_BASE}/app/ite-it87_6.18.18-trim-587-amd64/* /lib/modules/6.18.18-trim/updates/dkms/it87/
             fi
             ;;
         *)
