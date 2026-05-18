@@ -19,7 +19,9 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "20f2f2f"
-  this_pack_version: "1.0.5"
+  this_pack_manifest_version: "1.0.5"
+  this_pack_manifest_arch: "x86_64"
+  this_pack_manifest_platform: "x86_64"
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -106,6 +108,12 @@ jobs:
           name: ${{ env.proj_name }}-6.18.18-trim-587-amd64
           path: app/app/
 
+      - name: 替换manifest版本及架构信息
+        run: |
+          sed "s|target_commit_sha|${{ env.target_commit_sha }}|g" -i ./package/manifest
+          sed "s|this_pack_manifest_version|${{ env.this_pack_manifest_version }}|g" -i ./package/manifest
+          sed "s|this_pack_manifest_arch|${{ env.this_pack_manifest_arch }}|g" -i ./package/manifest
+          sed "s|this_pack_manifest_platform|${{ env.this_pack_manifest_platform }}|g" -i ./package/manifest
       - name: 打包app.tgz
         run: |
           cd app/
@@ -113,12 +121,12 @@ jobs:
           mv app.tgz ../package/
       - name: 打包package
         run: |
-          tar zcvf appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}.tgz package
+          tar zcvf appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz package
       - name: 上传应用包
         uses: actions/upload-artifact@master
         with:
-          name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}.tgz
-          path: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}.tgz
+          name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
+          path: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
 
       - name: Create GitHub Release
         if: ${{ inputs.make_release }}
@@ -126,9 +134,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.this_pack_version }}
+          tag_name: ${{ env.this_pack_manifest_version }}
           prerelease: true
-          release_name: "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}"
+          release_name: "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}"
       - name: Upload Release Assets
         if: ${{ inputs.make_release }}
         env:
@@ -136,8 +144,8 @@ jobs:
         run: |
           echo "Uploading release assets..."
           
-          echo "Uploading appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}.tgz"
-          gh release upload "${{ env.this_pack_version }}" "appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_version }}-${{ env.target_commit_sha }}.tgz" || echo "Failed to upload $file"
+          echo "Uploading appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz"
+          gh release upload "${{ env.this_pack_manifest_version }}" "appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz" || echo "Failed to upload $file"
           
           echo "Upload completed!"
 
@@ -147,4 +155,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Uploaded assets:"
-          gh release view "${{ env.this_pack_version }}" --json assets -q '.assets[].name'
+          gh release view "${{ env.this_pack_manifest_version }}" --json assets -q '.assets[].name'
