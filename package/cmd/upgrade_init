@@ -1,7 +1,8 @@
 #!/bin/bash
-echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t" $0 $*
-rm -rf /lib/modules/*/updates/dkms/it87
-modprobe -r -v it87
-depmod
-echo "modprobe -D"
-modprobe -D it87
+
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=package/cmd/common
+. "${SCRIPT_DIR}/common"
+
+log_invocation "$@"
+cleanup_it87_payload

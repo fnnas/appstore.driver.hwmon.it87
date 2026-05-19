@@ -2,8 +2,8 @@ name: Test Release
 run-name: ${{ github.actor }} build ${{ github.ref_name }} sha ${{ github.sha }}
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
+  actions: read
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       make_release:
-        description: 'Do you want to create a release?'
+        description: 'Create a GitHub Release after the package is built'
         required: true
         type: boolean
         default: false
@@ -23,136 +23,163 @@ env:
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86_64"
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      proj_name: ${{ env.proj_name }}
-      target_commit_sha: ${{ env.target_commit_sha }}
-    steps:
-      - run: echo "All set!"
-  build_6-12-18-trim-3:
-    uses: ./.github/workflows/kernel-6.12.18-trim-3.yml
-    secrets: inherit
-    needs:
-      - setup
-    with:
-      proj_name: ${{ needs.setup.outputs.proj_name }}
-      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
-  build_6-18-6-trim-297:
-    uses: ./.github/workflows/kernel-6.18.6-trim-297-amd64.yml
-    secrets: inherit
-    needs:
-      - setup
-    with:
-      proj_name: ${{ needs.setup.outputs.proj_name }}
-      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
-  build_6-18-18-trim-427:
-    uses: ./.github/workflows/kernel-6.18.18-trim-427-amd64.yml
-    secrets: inherit
-    needs:
-      - setup
-    with:
-      proj_name: ${{ needs.setup.outputs.proj_name }}
-      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
-  build_6-18-18-trim-570:
-    uses: ./.github/workflows/kernel-6.18.18-trim-570-amd64.yml
-    secrets: inherit
-    needs:
-      - setup
-    with:
-      proj_name: ${{ needs.setup.outputs.proj_name }}
-      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
-  build_6-18-18-trim-587:
-    uses: ./.github/workflows/kernel-6.18.18-trim-587-amd64.yml
-    secrets: inherit
-    needs:
-      - setup
-    with:
-      proj_name: ${{ needs.setup.outputs.proj_name }}
-      target_commit_sha: ${{ needs.setup.outputs.target_commit_sha }}
-
-  pack_app_tgz:
-    needs:
-      - build_6-12-18-trim-3
-      - build_6-18-6-trim-297
-      - build_6-18-18-trim-427
-      - build_6-18-18-trim-570
-      - build_6-18-18-trim-587
+  validate_workflow:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: restore 6-12-18-trim-3
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      - name: Run workflow and shell validation
+        run: |
+          bash scripts/validate-workflows-and-scripts.sh
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container_image }}
+      options: -v ${{ github.workspace }}:${{ github.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kernel_name: "6.12.18-trim_3"
+            kernel_ver: "6.12.18-trim"
+            container_image: "makedie/fnos:kernHead-6.12.18-trim-3"
+            artifact_name: "ite-it87-6.12.18-trim_3"
+            module_dir: "ite-it87_6.12.18-trim_3"
+          - kernel_name: "6.18.6-trim-297-amd64"
+            kernel_ver: "6.18.6-trim"
+            container_image: "makedie/fnos:kernHead-6.18.6-trim-297-amd64"
+            artifact_name: "ite-it87-6.18.6-trim-297-amd64"
+            module_dir: "ite-it87_6.18.6-trim-297-amd64"
+          - kernel_name: "6.18.18-trim-427-amd64"
+            kernel_ver: "6.18.18-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18-trim-427-amd64"
+            artifact_name: "ite-it87-6.18.18-trim-427-amd64"
+            module_dir: "ite-it87_6.18.18-trim-427-amd64"
+          - kernel_name: "6.18.18-trim-570-amd64"
+            kernel_ver: "6.18.18-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18-trim-570-amd64"
+            artifact_name: "ite-it87-6.18.18-trim-570-amd64"
+            module_dir: "ite-it87_6.18.18-trim-570-amd64"
+          - kernel_name: "6.18.18-trim-587-amd64"
+            kernel_ver: "6.18.18-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18-trim-587-amd64"
+            artifact_name: "ite-it87-6.18.18-trim-587-amd64"
+            module_dir: "ite-it87_6.18.18-trim-587-amd64"
+    env:
+      kernel_name: ${{ matrix.kernel_name }}
+      kernel_ver: ${{ matrix.kernel_ver }}
+    steps:
+      - name: Check out driver source
+        run: |
+          git clone https://github.com/fnnas/it87.git
+          cd it87 && git reset --hard "${{ env.target_commit_sha }}"
+      - name: Build kernel module for matrix row
+        run: |
+          cd it87
+          # shellcheck disable=SC2046
+          make -j$(nproc)
+      - name: Stage kernel module artifact
+        run: |
+          mkdir -p "upload/${{ matrix.module_dir }}"
+          cp ./it87/*.ko "./upload/${{ matrix.module_dir }}/"
+          ls -la "./upload/${{ matrix.module_dir }}/"
+      - name: Upload matrix build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: upload/${{ matrix.module_dir }}
+
+  pack_app_tgz:
+    needs:
+      - validate_workflow
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Download matrix artifact 6.12.18-trim_3
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.proj_name }}-6.12.18-trim_3
           path: app/app/
-      - name: restore 6-18-6-trim-297
+      - name: Download matrix artifact 6.18.6-trim-297-amd64
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.proj_name }}-6.18.6-trim-297-amd64
           path: app/app/
-      - name: restore 6-18-18-trim-427
+      - name: Download matrix artifact 6.18.18-trim-427-amd64
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-427-amd64
           path: app/app/
-      - name: restore 6-18-18-trim-570
+      - name: Download matrix artifact 6.18.18-trim-570-amd64
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-570-amd64
           path: app/app/
-      - name: restore 6-18-18-trim-587
+      - name: Download matrix artifact 6.18.18-trim-587-amd64
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-587-amd64
           path: app/app/
 
-      - name: 替换manifest版本及架构信息
+      - name: Replace manifest build-time values
         run: |
-          sed "s|target_commit_sha|${{ env.target_commit_sha }}|g" -i ./package/manifest
-          sed "s|this_pack_manifest_version|${{ env.this_pack_manifest_version }}|g" -i ./package/manifest
-          sed "s|this_pack_manifest_arch|${{ env.this_pack_manifest_arch }}|g" -i ./package/manifest
-          sed "s|this_pack_manifest_platform|${{ env.this_pack_manifest_platform }}|g" -i ./package/manifest
-      - name: 打包app.tgz
+          sed -i \
+            -e "s|target_commit_sha|${{ env.target_commit_sha }}|g" \
+            -e "s|this_pack_manifest_version|${{ env.this_pack_manifest_version }}|g" \
+            -e "s|this_pack_manifest_arch|${{ env.this_pack_manifest_arch }}|g" \
+            -e "s|this_pack_manifest_platform|${{ env.this_pack_manifest_platform }}|g" \
+            package/manifest
+      - name: Package app.tgz from staged app files
         run: |
           cd app/
           tar zcvf app.tgz app ui
-          mv app.tgz ../package/
-      - name: 打包package
+          cp app.tgz ../package/app.tgz
+      - name: Validate packaged files
+        run: |
+          bash scripts/validate-package.sh package
+      - name: Package final appstore archive
         run: |
           tar zcvf appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz package
-      - name: 上传应用包
-        uses: actions/upload-artifact@master
+      - name: Upload packaged app artifact
+        uses: actions/upload-artifact@v4
         with:
           name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
           path: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
 
-      - name: Create GitHub Release
-        if: ${{ inputs.make_release }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    needs: pack_app_tgz
+    if: ${{ inputs.make_release }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ env.this_pack_manifest_version }}
-          prerelease: true
-          release_name: "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}"
+          name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ env.this_pack_manifest_version }}" \
+            --prerelease \
+            --title "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}" \
+            --notes ""
       - name: Upload Release Assets
-        if: ${{ inputs.make_release }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_FILE: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
         run: |
-          echo "Uploading release assets..."
-          
-          echo "Uploading appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz"
-          gh release upload "${{ env.this_pack_manifest_version }}" "appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz" || echo "Failed to upload $file"
-          
-          echo "Upload completed!"
-
+          gh release upload "${{ env.this_pack_manifest_version }}" "$PACKAGE_FILE"
       - name: Verify Uploaded Assets
-        if: ${{ inputs.make_release }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploaded assets:"
           gh release view "${{ env.this_pack_manifest_version }}" --json assets -q '.assets[].name'
