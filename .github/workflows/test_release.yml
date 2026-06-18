@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} build ${{ github.ref_name }} sha ${{ github.sha }}
 
 permissions:
   contents: read
-  actions: read
+  actions: write
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
@@ -15,6 +15,11 @@ on:
         required: true
         type: boolean
         default: false
+      enable_ccache:
+        description: 'Enable ccache for kernel module builds'
+        required: true
+        type: boolean
+        default: true
 
 env:
   proj_name: "ite-it87"
@@ -78,16 +83,85 @@ jobs:
     env:
       kernel_name: ${{ matrix.kernel_name }}
       kernel_ver: ${{ matrix.kernel_ver }}
+      CCACHE_DIR: ${{ github.workspace }}/.ccache/${{ matrix.kernel_name }}
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: "true"
+      CCACHE_MAXSIZE: 1G
+      CCACHE_KEY: ccache-${{ matrix.kernel_name }}-it87-${{ github.run_id }}-${{ github.run_attempt }}
+      CCACHE_RESTORE_PREFIX: ccache-${{ matrix.kernel_name }}-it87-
     steps:
+      - name: Restore ccache
+        if: ${{ inputs.enable_ccache }}
+        id: restore_ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ env.CCACHE_KEY }}
+          restore-keys: |
+            ${{ env.CCACHE_RESTORE_PREFIX }}
       - name: Check out driver source
         run: |
           git clone https://github.com/fnnas/it87.git
           cd it87 && git reset --hard "${{ env.target_commit_sha }}"
-      - name: Build kernel module for matrix row
+      - name: Set up ccache
+        if: ${{ inputs.enable_ccache }}
+        id: setup_ccache
+        shell: bash
         run: |
+          apt-get update
+          apt-get install -y ccache
+          mkdir -p "$CCACHE_DIR" "$GITHUB_WORKSPACE/ccache-bin"
+          ccache_path="$(command -v ccache)"
+          declare -A seen=()
+          while IFS= read -r compiler; do
+            case "$compiler" in
+              gcc|g++|cc|c++|gcc-[0-9]*|g++-[0-9]*|cc-[0-9]*|c++-[0-9]*|*-gcc|*-g++|*-cc|*-c++|*-gcc-[0-9]*|*-g++-[0-9]*|*-cc-[0-9]*|*-c++-[0-9]*)
+                [[ -n "${seen[$compiler]+x}" ]] && continue
+                compiler_path="$(command -v "$compiler" || true)"
+                [[ -x "$compiler_path" ]] || continue
+                ln -sf "$ccache_path" "$GITHUB_WORKSPACE/ccache-bin/$compiler"
+                seen[$compiler]=1
+                ;;
+            esac
+          done < <(compgen -c | sort -u)
+          echo "$GITHUB_WORKSPACE/ccache-bin" >> "$GITHUB_PATH"
+          ccache --version
+          ccache --set-config=cache_dir="$CCACHE_DIR"
+          ccache --set-config=max_size="$CCACHE_MAXSIZE"
+          ccache --set-config=compression=true
+          ccache --set-config=compiler_check=content
+          ccache --set-config=hash_dir=false
+          ccache --set-config=path="$PATH"
+          ccache --zero-stats
+          ccache --show-config
+          echo "ccache wrappers:"
+          find "$GITHUB_WORKSPACE/ccache-bin" -maxdepth 1 -type l -printf '%f -> %l\n' | sort
+      - name: Build kernel module for matrix row
+        shell: bash
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            echo "compiler resolution before build:"
+            for compiler in cc gcc g++ c++ x86_64-linux-gnu-gcc x86_64-linux-gnu-g++; do
+              if command -v "$compiler" >/dev/null 2>&1; then
+                echo "$compiler -> $(command -v "$compiler")"
+              fi
+            done
+          fi
           cd it87
           # shellcheck disable=SC2046
           make -j$(nproc)
+      - name: Show ccache stats
+        if: ${{ always() && inputs.enable_ccache }}
+        shell: bash
+        run: |
+          ccache --show-stats || true
+      - name: Save ccache
+        if: ${{ always() && inputs.enable_ccache && steps.setup_ccache.outcome == 'success' }}
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ env.CCACHE_KEY }}
       - name: Stage kernel module artifact
         run: |
           mkdir -p "upload/${{ matrix.module_dir }}"
@@ -98,6 +172,69 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: upload/${{ matrix.module_dir }}
+
+  prune_ccache:
+    if: ${{ always() && inputs.enable_ccache && needs.build.result == 'success' }}
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Keep latest two it87 ccache entries per kernel
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          echo "Listing it87 kernel ccache entries..."
+          caches_file="$(mktemp)"
+          delete_file="$(mktemp)"
+
+          gh cache list --key ccache- --limit 1000 --json id,key,createdAt,lastAccessedAt,sizeInBytes > "$caches_file"
+
+          cache_count="$(jq 'length' "$caches_file")"
+          echo "Found $cache_count cache entries."
+          jq -r '
+            sort_by(.key)
+            | .[]
+            | "- id=\(.id) key=\(.key) createdAt=\(.createdAt) lastAccessedAt=\(.lastAccessedAt) size=\(.sizeInBytes)"
+          ' "$caches_file"
+
+          jq -c '
+            map(select(.key | test("^ccache-.+-it87-[0-9]+-[0-9]+$")))
+            | group_by(.key | sub("-[0-9]+-[0-9]+$"; ""))
+            | map(sort_by(.createdAt) | reverse | .[2:][]?)
+            | .[]
+          ' "$caches_file" > "$delete_file"
+
+          delete_count="$(jq -s 'length' "$delete_file")"
+          if [ "$delete_count" -eq 0 ]; then
+            echo "No old ccache entries to delete."
+            exit 0
+          fi
+
+          echo "Deleting $delete_count old ccache entries. Keeping latest two entries per key prefix."
+          while IFS= read -r cache; do
+            [ -n "$cache" ] || continue
+            cache_id="$(jq -r '.id' <<< "$cache")"
+            cache_key="$(jq -r '.key' <<< "$cache")"
+            if ! grep -Eq '^ccache-.+-it87-[0-9]+-[0-9]+$' <<< "$cache_key"; then
+              echo "::warning::Skip non-it87 ccache key=$cache_key"
+              continue
+            fi
+            echo "::group::Delete cache id=$cache_id key=$cache_key"
+            if output="$(gh cache delete "$cache_id" 2>&1)"; then
+              echo "Deleted cache id=$cache_id key=$cache_key"
+            else
+              status="$?"
+              echo "::warning::Failed to delete cache id=$cache_id key=$cache_key exit=$status"
+              echo "$output"
+            fi
+            echo "::endgroup::"
+          done < "$delete_file"
 
   pack_app_tgz:
     needs:
