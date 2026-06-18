@@ -6,7 +6,7 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 PACKAGE_BASE=${TRIM_APPDEST}
 MODULE_ROOT=/lib/modules
-supportKernelList=("6.12.18-trim" "6.18.6-trim" "6.18.18-trim" "6.18.18.c*-trim")
+supportKernelList=("6.12.18-trim" "6.18.6-trim" "6.18.18-trim" "6.18.18.c788-trim")
 
 nowKernelVer=$(uname -r)
 
@@ -60,7 +60,7 @@ install_module_payload() {
         6.18.6-trim)
             copy_module_payload "6.18.6-trim" "ite-it87_6.18.6-trim-297-amd64"
             ;;
-        6.18.18-trim|6.18.18.c*-trim)
+        6.18.18-trim)
             if [[ ! "$nowKernelBuildNum" =~ ^[0-9]+$ ]]; then
                 echo "Unsupported build number for ${nowKernelVer}: ${nowKernelBuildNum}"
                 exit 1
@@ -75,6 +75,9 @@ install_module_payload() {
             else
                 copy_module_payload "$nowKernelVer" "ite-it87_6.18.18-trim-717-amd64"
             fi
+            ;;
+        6.18.18.c788-trim)
+            copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c788-trim-amd64"
             ;;
     esac
 }
