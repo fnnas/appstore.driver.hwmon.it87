@@ -19,7 +19,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "20f2f2f"
-  this_pack_manifest_version: "1.0.5"
+  this_pack_manifest_version: "1.0.6"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86_64"
 jobs:
@@ -70,6 +70,11 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18-trim-587-amd64"
             artifact_name: "ite-it87-6.18.18-trim-587-amd64"
             module_dir: "ite-it87_6.18.18-trim-587-amd64"
+          - kernel_name: "6.18.18-trim-717-amd64"
+            kernel_ver: "6.18.18-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18-trim-717-amd64"
+            artifact_name: "ite-it87-6.18.18-trim-717-amd64"
+            module_dir: "ite-it87_6.18.18-trim-717-amd64"
     env:
       kernel_name: ${{ matrix.kernel_name }}
       kernel_ver: ${{ matrix.kernel_ver }}
@@ -127,6 +132,11 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-587-amd64
           path: app/app/
+      - name: Download matrix artifact 6.18.18-trim-717-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.proj_name }}-6.18.18-trim-717-amd64
+          path: app/app/
 
       - name: Replace manifest build-time values
         run: |
@@ -172,10 +182,16 @@ jobs:
             --prerelease \
             --title "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}" \
             --notes ""
+      - name: Rename release asset extension
+        env:
+          PACKAGE_FILE: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
+          RELEASE_PACKAGE_FILE: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz.fpk
+        run: |
+          mv "$PACKAGE_FILE" "$RELEASE_PACKAGE_FILE"
       - name: Upload Release Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGE_FILE: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
+          PACKAGE_FILE: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz.fpk
         run: |
           gh release upload "${{ env.this_pack_manifest_version }}" "$PACKAGE_FILE"
       - name: Verify Uploaded Assets
