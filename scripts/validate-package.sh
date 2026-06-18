@@ -49,6 +49,7 @@ require_tar_entry "app/ite-it87_6.18.6-trim-297-amd64"
 require_tar_entry "app/ite-it87_6.18.18-trim-427-amd64"
 require_tar_entry "app/ite-it87_6.18.18-trim-570-amd64"
 require_tar_entry "app/ite-it87_6.18.18-trim-587-amd64"
+require_tar_entry "app/ite-it87_6.18.18-trim-717-amd64"
 require_tar_entry "ui"
 
 echo "Package layout validated: ${package_dir}"
