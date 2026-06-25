@@ -85,7 +85,9 @@ install_module_payload() {
 reload_it87() {
     modprobe -r -v it87 || echo "unload it87 failed"
     depmod
-    modprobe -v it87 || echo "load it87 failed"
+    # [ 519.350456] ACPI Warning: SystemIO range 0x0000000000000A35-0x0000000000000A36 conflicts with OpRegion 0x0000000000000A35-0x0000000000000A36 (\_SB.PCI0.SBRG.SIO1.HWMN) (20250807/utaddress-204)
+    # [ 519.350461] ACPI: OSL: Resource conflict; ACPI support missing from driver?
+    modprobe -v it87 ignore_resource_conflict=1 || echo "load it87 failed"
 }
 
 if [[ "${1:-}" != "status" ]]; then
