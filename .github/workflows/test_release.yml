@@ -24,7 +24,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "20f2f2f"
-  this_pack_manifest_version: "1.0.6"
+  this_pack_manifest_version: "1.0.7"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
@@ -85,6 +85,11 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18.c788-trim-amd64"
             artifact_name: "ite-it87-6.18.18.c788-trim-amd64"
             module_dir: "ite-it87_6.18.18.c788-trim-amd64"
+          - kernel_name: "6.18.18.c877-trim-amd64"
+            kernel_ver: "6.18.18.c877-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18.c877-trim-amd64"
+            artifact_name: "ite-it87-6.18.18.c877-trim-amd64"
+            module_dir: "ite-it87_6.18.18.c877-trim-amd64"
     env:
       kernel_name: ${{ matrix.kernel_name }}
       kernel_ver: ${{ matrix.kernel_ver }}
@@ -284,6 +289,11 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18.c788-trim-amd64
           path: app/app/ite-it87_6.18.18.c788-trim-amd64/
+      - name: Download matrix artifact 6.18.18.c877-trim-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.proj_name }}-6.18.18.c877-trim-amd64
+          path: app/app/ite-it87_6.18.18.c877-trim-amd64/
 
       - name: Replace manifest build-time values
         run: |
