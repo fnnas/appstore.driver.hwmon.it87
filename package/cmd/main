@@ -6,7 +6,7 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 PACKAGE_BASE=${TRIM_APPDEST}
 MODULE_ROOT=/lib/modules
-supportKernelList=("6.12.18-trim" "6.18.6-trim" "6.18.18-trim" "6.18.18.c788-trim" "6.18.18.c877-trim")
+supportKernelList=("6.12.18-trim" "6.18.6-trim" "6.18.18-trim" "6.18.18.c788-trim" "6.18.18.c877-trim" "6.18.18.c938-trim")
 
 nowKernelVer=$(uname -r)
 
@@ -81,6 +81,9 @@ install_module_payload() {
             ;;
         6.18.18.c877-trim)
             copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c877-trim-amd64"
+            ;;
+        6.18.18.c938-trim)
+            copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c938-trim-amd64"
             ;;
     esac
 }
