@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+kernel_ver=${1:?Kernel version is required}
+output_dir=${2:?Output directory is required}
+source_dir="${TRIM_APPDEST:?TRIM_APPDEST is required}/app/it87-source"
+work_dir="${TRIM_PKGVAR:-/tmp}/it87-chroot.$$"
+root_dir="${work_dir}/root"
+
+cleanup() {
+    local status=$?
+
+    trap - EXIT
+    set +e
+    umount -l "${root_dir}/proc" 2>/dev/null
+    umount -l "${root_dir}/dev" 2>/dev/null
+    umount -l "$root_dir" 2>/dev/null
+    rm -rf -- "$work_dir"
+    exit "$status"
+}
+trap cleanup EXIT
+
+mkdir -p "${work_dir}/upper" "${work_dir}/work" "$root_dir"
+mount -t overlay overlay \
+    -o "lowerdir=/,upperdir=${work_dir}/upper,workdir=${work_dir}/work" \
+    "$root_dir"
+mount --bind /dev "${root_dir}/dev"
+mount -t proc proc "${root_dir}/proc"
+
+rm -f "${root_dir}/etc/resolv.conf"
+cp -L /etc/resolv.conf "${root_dir}/etc/resolv.conf"
+
+echo "Building it87 for ${kernel_ver} inside chroot..."
+chroot "$root_dir" /bin/bash -s -- "$source_dir" "$kernel_ver" <<'CHROOT_BUILD'
+set -e
+source_dir=$1
+kernel_ver=$2
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y --no-install-recommends build-essential bc
+make -C "$source_dir" TARGET="$kernel_ver" -j"$(nproc)"
+CHROOT_BUILD
+
+module_file="${root_dir}${source_dir}/it87.ko"
+mkdir -p "$output_dir"
+cp -f "$module_file" "$output_dir/"
+echo "Stored the compiled module in ${output_dir}"

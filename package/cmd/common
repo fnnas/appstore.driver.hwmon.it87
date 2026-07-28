@@ -4,6 +4,34 @@ log_invocation() {
     echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t" "$0" "$@"
 }
 
+reset_user_visible_log() {
+    if [[ -n "${TRIM_TEMP_LOGFILE:-}" ]]; then
+        : >"${TRIM_TEMP_LOGFILE}"
+    fi
+}
+
+report_error() {
+    local message=${1:-"Unknown error"}
+
+    printf 'ERROR: %s\n' "$message" >&2
+    if [[ -n "${TRIM_TEMP_LOGFILE:-}" ]]; then
+        printf '%s\n' "$message" >>"${TRIM_TEMP_LOGFILE}"
+    fi
+}
+
+run_with_user_visible_log() {
+    local command_status
+
+    if [[ -z "${TRIM_TEMP_LOGFILE:-}" ]]; then
+        "$@"
+        return $?
+    fi
+
+    "$@" 2>&1 | tee -a "${TRIM_TEMP_LOGFILE}"
+    command_status=${PIPESTATUS[0]}
+    return "$command_status"
+}
+
 cleanup_it87_payload() {
     rm -rf /lib/modules/*/updates/dkms/it87
     modprobe -r -v it87
