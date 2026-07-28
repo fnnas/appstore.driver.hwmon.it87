@@ -24,7 +24,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "20f2f2f"
-  this_pack_manifest_version: "1.0.8"
+  this_pack_manifest_version: "1.0.9"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
@@ -304,6 +304,20 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18.c938-trim-amd64
           path: app/app/ite-it87_6.18.18.c938-trim-amd64/
+
+      - name: Stage driver source for optional local builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_checkout="$(mktemp -d)"
+          trap 'rm -rf -- "$source_checkout"' EXIT
+
+          git clone --quiet --filter=blob:none --no-checkout \
+            https://github.com/fnnas/it87.git "$source_checkout"
+          mkdir -p app/app/it87-source
+          git -C "$source_checkout" archive --format=tar "${{ env.target_commit_sha }}" -- \
+            COPYING Makefile compat.h it87.c | tar -x -C app/app/it87-source
+          printf '%s\n' "${{ env.target_commit_sha }}" > app/app/it87-source/VERSION
 
       - name: Replace manifest build-time values
         run: |

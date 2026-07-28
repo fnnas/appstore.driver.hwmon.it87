@@ -3,6 +3,7 @@ set -euo pipefail
 
 package_scripts=(
   package/cmd/main
+  package/cmd/build_module_chroot
   package/cmd/install_init
   package/cmd/install_callback
   package/cmd/upgrade_init

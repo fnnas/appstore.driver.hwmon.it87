@@ -5,8 +5,8 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 . "${SCRIPT_DIR}/common"
 
 PACKAGE_BASE=${TRIM_APPDEST}
-MODULE_ROOT=/lib/modules
-supportKernelList=("6.12.18-trim" "6.18.6-trim" "6.18.18-trim" "6.18.18.c788-trim" "6.18.18.c877-trim" "6.18.18.c938-trim")
+MODULE_ROOT=${MODULE_ROOT:-/lib/modules}
+CHROOT_BUILD_SCRIPT=${CHROOT_BUILD_SCRIPT:-${SCRIPT_DIR}/build_module_chroot}
 
 nowKernelVer=$(uname -r)
 
@@ -16,102 +16,161 @@ kernel_build_num() {
 
 nowKernelBuildNum=$(kernel_build_num)
 
-is_supported_kernel() {
+module_payload_dir() {
     local kernel_ver=$1
-    local supported_kernel
 
-    for supported_kernel in "${supportKernelList[@]}"; do
-        # shellcheck disable=SC2053
-        if [[ "$kernel_ver" == $supported_kernel ]]; then
-            return 0
-        fi
-    done
-
-    return 1
+    case "$kernel_ver" in
+        6.12.18-trim)
+            printf '%s\n' "ite-it87_6.12.18-trim_3"
+            ;;
+        6.18.6-trim)
+            printf '%s\n' "ite-it87_6.18.6-trim-297-amd64"
+            ;;
+        6.18.18-trim)
+            if [[ ! "$nowKernelBuildNum" =~ ^[0-9]+$ ]]; then
+                printf '%s\n' "ite-it87_${kernel_ver}"
+            elif (( nowKernelBuildNum < 570 )); then
+                printf '%s\n' "ite-it87_6.18.18-trim-427-amd64"
+            elif (( nowKernelBuildNum < 587 )); then
+                printf '%s\n' "ite-it87_6.18.18-trim-570-amd64"
+            elif (( nowKernelBuildNum < 717 )); then
+                printf '%s\n' "ite-it87_6.18.18-trim-587-amd64"
+            else
+                printf '%s\n' "ite-it87_6.18.18-trim-717-amd64"
+            fi
+            ;;
+        6.18.18.c788-trim)
+            printf '%s\n' "ite-it87_6.18.18.c788-trim-amd64"
+            ;;
+        6.18.18.c877-trim)
+            printf '%s\n' "ite-it87_6.18.18.c877-trim-amd64"
+            ;;
+        6.18.18.c938-trim)
+            printf '%s\n' "ite-it87_6.18.18.c938-trim-amd64"
+            ;;
+        *)
+            printf '%s\n' "ite-it87_${kernel_ver}"
+            ;;
+    esac
 }
 
-ensure_supported_kernel() {
-    local kernel_ver=$1
+module_payload_exists() {
+    local payload_dir=$1
+    local payload_path="${PACKAGE_BASE}/app/${payload_dir}"
+    local module_files=("${payload_path}"/*.ko)
 
-    if is_supported_kernel "$kernel_ver"; then
-        echo "${kernel_ver} in supportKernelList"
-        return 0
-    fi
-
-    echo "${kernel_ver} not in supportKernelList"
-    echo "Supported versions: ${supportKernelList[*]}"
-    exit 1
+    [[ -d "$payload_path" && -f "${module_files[0]}" ]]
 }
 
 copy_module_payload() {
     local kernel_ver=$1
     local payload_dir=$2
+    local payload_path="${PACKAGE_BASE}/app/${payload_dir}"
     local target_dir="${MODULE_ROOT}/${kernel_ver}/updates/dkms/it87"
+    local module_files=("${payload_path}"/*.ko)
 
-    mkdir -p "$target_dir"
-    cp -rf "${PACKAGE_BASE}/app/${payload_dir}/"* "$target_dir/"
+    if [[ ! -d "$payload_path" ]]; then
+        report_error "No prebuilt it87 module directory was found for kernel ${kernel_ver}: ${payload_path}"
+        return 1
+    fi
+
+    if [[ ! -f "${module_files[0]}" ]]; then
+        report_error "No prebuilt it87 kernel module was found for kernel ${kernel_ver} in ${payload_path}"
+        return 1
+    fi
+
+    if ! mkdir -p "$target_dir"; then
+        report_error "Failed to create the it87 module installation directory: ${target_dir}"
+        return 1
+    fi
+
+    if ! cp -f -- "${module_files[@]}" "$target_dir/"; then
+        report_error "Failed to copy the it87 kernel module into ${target_dir}"
+        return 1
+    fi
 }
 
-install_module_payload() {
-    case "$nowKernelVer" in
-        6.12.18-trim)
-            copy_module_payload "6.12.18-trim" "ite-it87_6.12.18-trim_3"
-            ;;
-        6.18.6-trim)
-            copy_module_payload "6.18.6-trim" "ite-it87_6.18.6-trim-297-amd64"
-            ;;
-        6.18.18-trim)
-            if [[ ! "$nowKernelBuildNum" =~ ^[0-9]+$ ]]; then
-                echo "Unsupported build number for ${nowKernelVer}: ${nowKernelBuildNum}"
-                exit 1
-            fi
+local_build_allowed() {
+    [[ "${wizard_module_install_mode:-prebuilt_only}" == "allow_local_build" ]]
+}
 
-            if (( nowKernelBuildNum < 570 )); then
-                copy_module_payload "$nowKernelVer" "ite-it87_6.18.18-trim-427-amd64"
-            elif (( nowKernelBuildNum >= 570 && nowKernelBuildNum < 587 )); then
-                copy_module_payload "$nowKernelVer" "ite-it87_6.18.18-trim-570-amd64"
-            elif (( nowKernelBuildNum >= 587 && nowKernelBuildNum < 717 )); then
-                copy_module_payload "$nowKernelVer" "ite-it87_6.18.18-trim-587-amd64"
-            else
-                copy_module_payload "$nowKernelVer" "ite-it87_6.18.18-trim-717-amd64"
-            fi
-            ;;
-        6.18.18.c788-trim)
-            copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c788-trim-amd64"
-            ;;
-        6.18.18.c877-trim)
-            copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c877-trim-amd64"
-            ;;
-        6.18.18.c938-trim)
-            copy_module_payload "$nowKernelVer" "ite-it87_6.18.18.c938-trim-amd64"
-            ;;
-    esac
+create_build_lock() {
+    local kernel_ver=$1
+
+    printf 'kernel=%s\nstarted_at=%s\n' "$kernel_ver" "$(date -Iseconds)" \
+        >"$IT87_BUILD_FAILURE_LOCK" \
+        || report_error "Unable to create the local build lock file: ${IT87_BUILD_FAILURE_LOCK}"
+}
+
+build_module_payload() {
+    local kernel_ver=$1
+    local payload_dir=$2
+    local output_dir="${PACKAGE_BASE}/app/${payload_dir}"
+
+    if [[ -f "$IT87_BUILD_FAILURE_LOCK" ]]; then
+        report_error "A previous chroot build did not complete successfully. To avoid another resource-intensive retry, local compilation has been skipped. Restart the device to clear /tmp, or manually delete ${IT87_BUILD_FAILURE_LOCK} before trying again."
+        return 1
+    fi
+
+    if [[ ! -f "${PACKAGE_BASE}/app/it87-source/Makefile" ]]; then
+        report_error "The packaged it87 source code is missing; the fallback build cannot start."
+        return 1
+    fi
+
+    create_build_lock "$kernel_ver" || return 1
+
+    echo "No prebuilt it87 module was found for ${kernel_ver}; starting the requested chroot fallback build."
+    if ! run_with_user_visible_log bash "$CHROOT_BUILD_SCRIPT" "$kernel_ver" "$output_dir"; then
+        report_error "Failed to build the it87 module for kernel ${kernel_ver} in chroot."
+        return 1
+    fi
+
+    if ! module_payload_exists "$payload_dir"; then
+        report_error "The chroot build completed without producing an it87 kernel module for ${kernel_ver}."
+        return 1
+    fi
+
+    clear_it87_build_failure_lock
 }
 
 reload_it87() {
-    modprobe -r -v it87 || echo "unload it87 failed"
-    depmod
-    # [ 519.350456] ACPI Warning: SystemIO range 0x0000000000000A35-0x0000000000000A36 conflicts with OpRegion 0x0000000000000A35-0x0000000000000A36 (\_SB.PCI0.SBRG.SIO1.HWMN) (20250807/utaddress-204)
-    # [ 519.350461] ACPI: OSL: Resource conflict; ACPI support missing from driver?
-    modprobe -v it87 ignore_resource_conflict=1 || echo "load it87 failed"
+    modprobe -r -v it87 || echo "it87 was not loaded; continuing with installation"
+
+    if ! depmod; then
+        report_error "Failed to refresh kernel module dependencies."
+        return 1
+    fi
+
+    # ACPI may reserve the Super I/O range used by the sensor chip.
+    if ! modprobe -v it87 ignore_resource_conflict=1; then
+        report_error "The it87 module was installed but could not be loaded on kernel ${nowKernelVer}."
+        return 1
+    fi
 }
 
 if [[ "${1:-}" != "status" ]]; then
     log_invocation "$@"
 fi
 
-case $1 in
+case ${1:-} in
 start)
-    ensure_supported_kernel "$nowKernelVer"
-    install_module_payload
-    reload_it87
+    reset_user_visible_log
+    payload_dir=$(module_payload_dir "$nowKernelVer")
+
+    if ! module_payload_exists "$payload_dir" && local_build_allowed; then
+        payload_dir="ite-it87_${nowKernelVer}"
+        build_module_payload "$nowKernelVer" "$payload_dir" || exit 1
+    fi
+
+    copy_module_payload "$nowKernelVer" "$payload_dir" || exit 1
+    reload_it87 || exit 1
     ;;
 stop)
     :
     ;;
 status)
     modlist=$(lsmod | grep -c it87)
-    if [[ -d "/lib/modules/$(uname -r)/updates/dkms/it87" && $modlist -ne 0 ]]; then
+    if [[ -d "${MODULE_ROOT}/$(uname -r)/updates/dkms/it87" && $modlist -ne 0 ]]; then
         exit 0
     else
         log_invocation "$@"
