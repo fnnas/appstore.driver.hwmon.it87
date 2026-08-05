@@ -24,7 +24,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "20f2f2f"
-  this_pack_manifest_version: "1.0.9"
+  this_pack_manifest_version: "1.0.10"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
@@ -95,6 +95,11 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18.c938-trim-amd64"
             artifact_name: "ite-it87-6.18.18.c938-trim-amd64"
             module_dir: "ite-it87_6.18.18.c938-trim-amd64"
+          - kernel_name: "6.18.18.c952-trim-amd64"
+            kernel_ver: "6.18.18.c952-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18.c952-trim-amd64"
+            artifact_name: "ite-it87-6.18.18.c952-trim-amd64"
+            module_dir: "ite-it87_6.18.18.c952-trim-amd64"
     env:
       kernel_name: ${{ matrix.kernel_name }}
       kernel_ver: ${{ matrix.kernel_ver }}
@@ -304,6 +309,11 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18.c938-trim-amd64
           path: app/app/ite-it87_6.18.18.c938-trim-amd64/
+      - name: Download matrix artifact 6.18.18.c952-trim-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.proj_name }}-6.18.18.c952-trim-amd64
+          path: app/app/ite-it87_6.18.18.c952-trim-amd64/
 
       - name: Stage driver source for optional local builds
         shell: bash
@@ -362,7 +372,7 @@ jobs:
           gh release create "${{ env.this_pack_manifest_version }}" \
             --repo "${GITHUB_REPOSITORY}" \
             --prerelease \
-            --title "fnnas.appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}" \
+            --title "${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}" \
             --notes ""
       - name: Rename release asset extension
         env:
