@@ -330,7 +330,17 @@ jobs:
         run: |
           set -euo pipefail
           source_checkout="$(mktemp -d)"
-          trap 'rm -rf -- "$source_checkout"' EXIT
+          cleanup_source_checkout() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if rm -rf -- "$source_checkout" 2>/dev/null; then
+                return 0
+              fi
+              sleep "$attempt"
+            done
+            echo "::warning::Unable to fully remove temporary source checkout: $source_checkout"
+          }
+          trap cleanup_source_checkout EXIT
 
           git clone --quiet --filter=blob:none --no-checkout \
             https://github.com/fnnas/it87.git "$source_checkout"
