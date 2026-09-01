@@ -23,8 +23,8 @@ on:
 
 env:
   proj_name: "ite-it87"
-  target_commit_sha: "20f2f2f"
-  this_pack_manifest_version: "1.0.11"
+  target_commit_sha: "c567739"
+  this_pack_manifest_version: "1.0.12"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
