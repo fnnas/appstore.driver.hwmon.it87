@@ -60,6 +60,9 @@ module_payload_dir() {
         6.18.18.c1126-trim)
             printf '%s\n' "ite-it87_6.18.18.c1126-trim-amd64"
             ;;
+        6.18.18.c1168-trim)
+            printf '%s\n' "ite-it87_6.18.18.c1168-trim-amd64"
+            ;;
         *)
             printf '%s\n' "ite-it87_${kernel_ver}"
             ;;
