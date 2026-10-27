@@ -2,9 +2,25 @@
 
 set -euo pipefail
 
-kernel_ver=${1:?Kernel version is required}
-output_dir=${2:?Output directory is required}
-source_dir="${TRIM_APPDEST:?TRIM_APPDEST is required}/app/it87-source"
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+. "${SCRIPT_DIR}/common"
+
+kernel_ver=${1:-}
+output_dir=${2:-}
+if [[ -z "$kernel_ver" ]]; then
+    report_error kernel_version_required
+    exit 2
+fi
+if [[ -z "$output_dir" ]]; then
+    report_error output_dir_required
+    exit 2
+fi
+if [[ -z "${TRIM_APPDEST:-}" ]]; then
+    report_error app_destination_required
+    exit 2
+fi
+
+source_dir="${TRIM_APPDEST}/app/it87-source"
 work_dir="${TRIM_PKGVAR:-/tmp}/it87-chroot.$$"
 root_dir="${work_dir}/root"
 
@@ -31,7 +47,7 @@ mount -t proc proc "${root_dir}/proc"
 rm -f "${root_dir}/etc/resolv.conf"
 cp -L /etc/resolv.conf "${root_dir}/etc/resolv.conf"
 
-echo "Building it87 for ${kernel_ver} inside chroot..."
+i18n_message chroot_build_started "$kernel_ver"
 chroot "$root_dir" /bin/bash -s -- "$source_dir" "$kernel_ver" <<'CHROOT_BUILD'
 set -e
 source_dir=$1
@@ -46,4 +62,4 @@ CHROOT_BUILD
 module_file="${root_dir}${source_dir}/it87.ko"
 mkdir -p "$output_dir"
 cp -f "$module_file" "$output_dir/"
-echo "Stored the compiled module in ${output_dir}"
+i18n_message chroot_build_stored "$output_dir"

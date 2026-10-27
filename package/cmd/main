@@ -85,22 +85,22 @@ copy_module_payload() {
     local module_files=("${payload_path}"/*.ko)
 
     if [[ ! -d "$payload_path" ]]; then
-        report_error "No prebuilt it87 module directory was found for kernel ${kernel_ver}: ${payload_path}"
+        report_error prebuilt_dir_missing "$kernel_ver" "$payload_path"
         return 1
     fi
 
     if [[ ! -f "${module_files[0]}" ]]; then
-        report_error "No prebuilt it87 kernel module was found for kernel ${kernel_ver} in ${payload_path}"
+        report_error prebuilt_module_missing "$kernel_ver" "$payload_path"
         return 1
     fi
 
     if ! mkdir -p "$target_dir"; then
-        report_error "Failed to create the it87 module installation directory: ${target_dir}"
+        report_error install_dir_failed "$target_dir"
         return 1
     fi
 
     if ! cp -f -- "${module_files[@]}" "$target_dir/"; then
-        report_error "Failed to copy the it87 kernel module into ${target_dir}"
+        report_error copy_module_failed "$target_dir"
         return 1
     fi
 }
@@ -114,7 +114,7 @@ create_build_lock() {
 
     printf 'kernel=%s\nstarted_at=%s\n' "$kernel_ver" "$(date -Iseconds)" \
         >"$IT87_BUILD_FAILURE_LOCK" \
-        || report_error "Unable to create the local build lock file: ${IT87_BUILD_FAILURE_LOCK}"
+        || report_error build_lock_failed "$IT87_BUILD_FAILURE_LOCK"
 }
 
 build_module_payload() {
@@ -123,25 +123,25 @@ build_module_payload() {
     local output_dir="${PACKAGE_BASE}/app/${payload_dir}"
 
     if [[ -f "$IT87_BUILD_FAILURE_LOCK" ]]; then
-        report_error "A previous chroot build did not complete successfully. To avoid another resource-intensive retry, local compilation has been skipped. Restart the device to clear /tmp, or manually delete ${IT87_BUILD_FAILURE_LOCK} before trying again."
+        report_error previous_build_failed "$IT87_BUILD_FAILURE_LOCK"
         return 1
     fi
 
     if [[ ! -f "${PACKAGE_BASE}/app/it87-source/Makefile" ]]; then
-        report_error "The packaged it87 source code is missing; the fallback build cannot start."
+        report_error source_missing
         return 1
     fi
 
     create_build_lock "$kernel_ver" || return 1
 
-    echo "No prebuilt it87 module was found for ${kernel_ver}; starting the requested chroot fallback build."
+    i18n_message fallback_build_started "$kernel_ver"
     if ! run_with_user_visible_log bash "$CHROOT_BUILD_SCRIPT" "$kernel_ver" "$output_dir"; then
-        report_error "Failed to build the it87 module for kernel ${kernel_ver} in chroot."
+        report_error fallback_build_failed "$kernel_ver"
         return 1
     fi
 
     if ! module_payload_exists "$payload_dir"; then
-        report_error "The chroot build completed without producing an it87 kernel module for ${kernel_ver}."
+        report_error built_module_missing "$kernel_ver"
         return 1
     fi
 
@@ -149,16 +149,16 @@ build_module_payload() {
 }
 
 reload_it87() {
-    modprobe -r -v it87 || echo "it87 was not loaded; continuing with installation"
+    modprobe -r -v it87 || i18n_message module_not_loaded
 
     if ! depmod; then
-        report_error "Failed to refresh kernel module dependencies."
+        report_error depmod_failed
         return 1
     fi
 
     # ACPI may reserve the Super I/O range used by the sensor chip.
     if ! modprobe -v it87 ignore_resource_conflict=1; then
-        report_error "The it87 module was installed but could not be loaded on kernel ${nowKernelVer}."
+        report_error module_load_failed "$nowKernelVer"
         return 1
     fi
 }

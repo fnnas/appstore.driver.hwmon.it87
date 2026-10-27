@@ -29,10 +29,10 @@ env:
   this_pack_manifest_platform: "x86"
 jobs:
   validate_workflow:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install shellcheck
         run: |
           sudo apt-get update
@@ -42,7 +42,7 @@ jobs:
           bash scripts/validate-workflows-and-scripts.sh
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ${{ matrix.container_image }}
       options: -v ${{ github.workspace }}:${{ github.workspace }}
@@ -133,7 +133,7 @@ jobs:
       - name: Restore ccache
         if: ${{ inputs.enable_ccache }}
         id: restore_ccache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ env.CCACHE_KEY }}
@@ -197,7 +197,7 @@ jobs:
           ccache --show-stats || true
       - name: Save ccache
         if: ${{ always() && inputs.enable_ccache && steps.setup_ccache.outcome == 'success' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         continue-on-error: true
         with:
           path: ${{ env.CCACHE_DIR }}
@@ -208,7 +208,7 @@ jobs:
           cp ./it87/*.ko "./upload/${{ matrix.module_dir }}/"
           ls -la "./upload/${{ matrix.module_dir }}/"
       - name: Upload matrix build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact_name }}
           path: upload/${{ matrix.module_dir }}
@@ -217,7 +217,7 @@ jobs:
     if: ${{ always() && inputs.enable_ccache && needs.build.result == 'success' }}
     needs:
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     steps:
@@ -280,77 +280,77 @@ jobs:
     needs:
       - validate_workflow
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download matrix artifact 6.12.18-trim_3
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.12.18-trim_3
           path: app/app/ite-it87_6.12.18-trim_3/
       - name: Download matrix artifact 6.18.6-trim-297-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.6-trim-297-amd64
           path: app/app/ite-it87_6.18.6-trim-297-amd64/
       - name: Download matrix artifact 6.18.18-trim-427-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-427-amd64
           path: app/app/ite-it87_6.18.18-trim-427-amd64/
       - name: Download matrix artifact 6.18.18-trim-570-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-570-amd64
           path: app/app/ite-it87_6.18.18-trim-570-amd64/
       - name: Download matrix artifact 6.18.18-trim-587-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-587-amd64
           path: app/app/ite-it87_6.18.18-trim-587-amd64/
       - name: Download matrix artifact 6.18.18-trim-717-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-717-amd64
           path: app/app/ite-it87_6.18.18-trim-717-amd64/
       - name: Download matrix artifact 6.18.18.c788-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c788-trim-amd64
           path: app/app/ite-it87_6.18.18.c788-trim-amd64/
       - name: Download matrix artifact 6.18.18.c877-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c877-trim-amd64
           path: app/app/ite-it87_6.18.18.c877-trim-amd64/
       - name: Download matrix artifact 6.18.18.c938-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c938-trim-amd64
           path: app/app/ite-it87_6.18.18.c938-trim-amd64/
       - name: Download matrix artifact 6.18.18.c952-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c952-trim-amd64
           path: app/app/ite-it87_6.18.18.c952-trim-amd64/
       - name: Download matrix artifact 6.18.18.c1032-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c1032-trim-amd64
           path: app/app/ite-it87_6.18.18.c1032-trim-amd64/
       - name: Download matrix artifact 6.18.18.c1078-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c1078-trim-amd64
           path: app/app/ite-it87_6.18.18.c1078-trim-amd64/
       - name: Download matrix artifact 6.18.18.c1126-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c1126-trim-amd64
           path: app/app/ite-it87_6.18.18.c1126-trim-amd64/
       - name: Download matrix artifact 6.18.18.c1168-trim-amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18.c1168-trim-amd64
           path: app/app/ite-it87_6.18.18.c1168-trim-amd64/
@@ -379,14 +379,18 @@ jobs:
             COPYING Makefile compat.h it87.c | tar -x -C app/app/it87-source
           printf '%s\n' "${{ env.target_commit_sha }}" > app/app/it87-source/VERSION
 
-      - name: Replace manifest build-time values
+      - name: Replace manifest and translation build-time values
         run: |
           sed -i \
             -e "s|target_commit_sha|${{ env.target_commit_sha }}|g" \
             -e "s|this_pack_manifest_version|${{ env.this_pack_manifest_version }}|g" \
             -e "s|this_pack_manifest_arch|${{ env.this_pack_manifest_arch }}|g" \
             -e "s|this_pack_manifest_platform|${{ env.this_pack_manifest_platform }}|g" \
-            package/manifest
+            package/manifest package/i18n/zh package/i18n/en
+      - name: Stage runtime translations
+        run: |
+          mkdir -p app/app/i18n
+          cp package/i18n/zh package/i18n/en app/app/i18n/
       - name: Package app.tgz from staged app files
         run: |
           cd app/
@@ -399,7 +403,7 @@ jobs:
         run: |
           tar zcvf appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz package
       - name: Upload packaged app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
           path: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
@@ -407,12 +411,12 @@ jobs:
   release:
     needs: pack_app_tgz
     if: ${{ inputs.make_release }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - name: Download package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: appstore.driver.hwmon.${{ env.proj_name }}-${{ env.this_pack_manifest_version }}-${{ env.target_commit_sha }}.tgz
       - name: Create GitHub Release

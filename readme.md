@@ -38,6 +38,12 @@ GitHub Actions 使用单个 `Test Release` 工作流完成构建、打包和发�
 
 发布由手动触发参数 `make_release` 控制，默认不会创建 GitHub Release。只有显式打开 `make_release` 时，工作流才会创建 Release 并上传产物。
 
+## 国际化
+
+应用描述、更新说明、安装向导和运行提示支持中文与英文，文案统一维护在 `package/i18n/zh` 和 `package/i18n/en`。运行脚本优先使用飞牛系统提供的 `TRIM_SYS_LANGUAGE`，未设置时依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`；中文地区代码使用中文，其他语言回退到英文。
+
+应用描述和更新说明中的驱动提交标识由 CI 与 `package/manifest` 一起替换，处理后的语言文件也会随应用 payload 分发供运行脚本读取。新增内核支持时，需要同步更新两份语言资源中的支持列表。可在仓库根目录运行 `bash scripts/validate-workflows-and-scripts.sh` 检查脚本，以及两种语言的键、参数数量、引用和内核支持列表是否一致。
+
 ## 故障诊断
 可以通过筛选it87相关日志观察  
 ```shell

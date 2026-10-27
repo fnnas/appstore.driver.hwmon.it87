@@ -1,6 +1,32 @@
+[manifest]
+desc="Out-of-tree driver for IT87/IT86 hardware monitoring chips (target_commit_sha)<br>Prebuilt modules support the following kernel versions<br>6.12.18-trim#3, 6.18.6-trim#297, 6.18.18-trim#427, 6.18.18-trim#570, 6.18.18-trim#587, 6.18.18-trim#717<br>6.18.18.c788-trim#788, 6.18.18.c877-trim#877, 6.18.18.c938-trim#938, 6.18.18.c952-trim#952, 6.18.18.c1032-trim#1032, 6.18.18.c1078-trim#1078, 6.18.18.c1126-trim#1126, 6.18.18.c1168-trim#1168<br>When no prebuilt module is available for the current kernel, an optional local build in chroot can be used as a fallback. This carries additional risk; waiting for a supported prebuilt release is recommended.<br>This driver package is provided and maintained by community members.<br>For support, contact community members or open an issue in this repository and include exported logs."
+changelog="Updated the driver to target_commit_sha with support for the currently adapted kernels."
+
 [wizard]
 install_step_title="Kernel module installation"
 install_mode_label="Choose an installation method"
 prebuilt_only_label="Use prebuilt modules only (recommended)"
 allow_local_build_label="Allow a local build when missing (high risk)"
 local_build_warning="<strong>Warning: We strongly recommend using prebuilt modules only and waiting for a release that supports your kernel.</strong><br><br>Local builds are intended only for advanced users who can diagnose and accept kernel-driver risks. Compilation may saturate CPU, memory, and disk I/O for an extended period, causing severe slowdowns, interrupted services, or an unresponsive system.<br><br>The resulting module has not been pre-validated and may fail to load or destabilize the system, potentially requiring a restart."
+
+[runtime]
+unknown_error="Unknown error"
+error_prefix="ERROR"
+prebuilt_dir_missing="No prebuilt it87 module directory was found for kernel %s: %s"
+prebuilt_module_missing="No prebuilt it87 kernel module was found for kernel %s in %s"
+install_dir_failed="Failed to create the it87 module installation directory: %s"
+copy_module_failed="Failed to copy the it87 kernel module into %s"
+build_lock_failed="Unable to create the local build lock file: %s"
+previous_build_failed="A previous chroot build did not complete successfully. To avoid another resource-intensive retry, local compilation has been skipped. Restart the device to clear /tmp, or manually delete %s before trying again."
+source_missing="The packaged it87 source code is missing; the fallback build cannot start."
+fallback_build_started="No prebuilt it87 module was found for %s; starting the requested chroot fallback build."
+fallback_build_failed="Failed to build the it87 module for kernel %s in chroot."
+built_module_missing="The chroot build completed without producing an it87 kernel module for %s."
+module_not_loaded="it87 was not loaded; continuing with installation"
+depmod_failed="Failed to refresh kernel module dependencies."
+module_load_failed="The it87 module was installed but could not be loaded on kernel %s."
+kernel_version_required="Kernel version is required."
+output_dir_required="Output directory is required."
+app_destination_required="TRIM_APPDEST is required."
+chroot_build_started="Building it87 for %s inside chroot..."
+chroot_build_stored="Stored the compiled module in %s"

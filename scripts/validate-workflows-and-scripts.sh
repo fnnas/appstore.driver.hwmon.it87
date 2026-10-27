@@ -47,6 +47,51 @@ print_step "Checking Bash syntax with bash -n"
 bash -n "${shell_files[@]}"
 
 print_step "Running ShellCheck static analysis"
-shellcheck "${shell_files[@]}"
+shellcheck -P SCRIPTDIR "${shell_files[@]}"
+
+translation_schema() {
+  awk '
+    { sub(/\r$/, "") }
+    /^[[:space:]]*$/ { next }
+    /^\[[a-z_]+\]$/ { section = substr($0, 2, length($0) - 2); next }
+    /^[a-z_][a-z0-9_]*=".+"$/ {
+      key = section "." substr($0, 1, index($0, "=") - 1)
+      if (section == "" || seen[key]++) {
+        print "Invalid or duplicate translation key: " key > "/dev/stderr"
+        exit 1
+      }
+      print key ":" gsub(/%s/, "%s")
+      next
+    }
+    { print "Invalid translation line: " $0 > "/dev/stderr"; exit 1 }
+  ' "$1" | sort
+}
+
+print_step "Checking translation keys and parameters"
+english_schema=$(translation_schema package/i18n/en)
+chinese_schema=$(translation_schema package/i18n/zh)
+if [[ "$english_schema" != "$chinese_schema" ]]; then
+  echo "English and Chinese translation keys or parameters differ." >&2
+  diff -u <(printf '%s\n' "$english_schema") <(printf '%s\n' "$chinese_schema") || true
+  exit 1
+fi
+
+translation_keys=$(printf '%s\n' "$english_schema" | cut -d: -f1)
+template_references=$(grep -hoE '\$\{[a-z_]+\.[a-z_]+\}' package/manifest package/wizard/install | sed 's/^${//; s/}$//')
+runtime_references=$(grep -hoE '(report_error|i18n_message) [a-z_][a-z0-9_]*' "${package_scripts[@]}" "${package_common_scripts[@]}" | awk '{ print "runtime." $2 }')
+while IFS= read -r translation_key; do
+  if ! grep -Fxq "$translation_key" <<<"$translation_keys"; then
+    echo "Missing translation key: ${translation_key}" >&2
+    exit 1
+  fi
+done < <(printf '%s\n' "$template_references" "$runtime_references" | sort -u)
+
+print_step "Checking translated kernel support lists"
+english_kernels=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.c[0-9]+)?-trim#[0-9]+' package/i18n/en | sort)
+chinese_kernels=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.c[0-9]+)?-trim#[0-9]+' package/i18n/zh | sort)
+if [[ "$english_kernels" != "$chinese_kernels" ]]; then
+  echo "English and Chinese kernel support lists differ." >&2
+  exit 1
+fi
 
 print_step "Workflow and shell validation completed"

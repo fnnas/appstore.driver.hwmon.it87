@@ -2,6 +2,60 @@
 
 IT87_BUILD_FAILURE_LOCK=${IT87_BUILD_FAILURE_LOCK:-/tmp/ite-it87-chroot-build.failed}
 
+declare -A IT87_MESSAGES=()
+
+load_runtime_translations() {
+    local translation_file=$1
+    local section=""
+    local line
+
+    [[ -r "$translation_file" ]] || return 0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line=${line%$'\r'}
+        if [[ "$line" == \[*\] ]]; then
+            section=${line:1:-1}
+        elif [[ "$section" == "runtime" && "$line" =~ ^([a-z_][a-z0-9_]*)=\"(.+)\"$ ]]; then
+            IT87_MESSAGES[${BASH_REMATCH[1]}]=${BASH_REMATCH[2]}
+        fi
+    done <"$translation_file"
+}
+
+init_i18n() {
+    local language=${TRIM_SYS_LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-${LANG:-en}}}}
+    local translations_dir
+    if [[ -n "${TRIM_APPDEST:-}" && -d "${TRIM_APPDEST}/app/i18n" ]]; then
+        translations_dir="${TRIM_APPDEST}/app/i18n"
+    else
+        translations_dir="$(dirname -- "${BASH_SOURCE[0]}")/../i18n"
+    fi
+
+    IT87_MESSAGES=()
+    load_runtime_translations "${translations_dir}/en"
+    case "${language,,}" in
+        zh|zh[-_.]*)
+            load_runtime_translations "${translations_dir}/zh"
+            ;;
+    esac
+}
+
+i18n_message() {
+    local message_key=$1
+    shift
+    local message=${IT87_MESSAGES[$message_key]:-${IT87_MESSAGES[unknown_error]:-Unknown error}}
+    local argument
+
+    for argument in "$@"; do
+        if [[ "$message" == *'%s'* ]]; then
+            printf '%s%s' "${message%%'%s'*}" "$argument"
+            message=${message#*'%s'}
+        fi
+    done
+    printf '%s\n' "$message"
+}
+
+init_i18n
+
 log_invocation() {
     echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t" "$0" "$@"
 }
@@ -13,9 +67,10 @@ reset_user_visible_log() {
 }
 
 report_error() {
-    local message=${1:-"Unknown error"}
+    local message
+    message=$(i18n_message "${1:-unknown_error}" "${@:2}")
 
-    printf 'ERROR: %s\n' "$message" >&2
+    printf '%s: %s\n' "$(i18n_message error_prefix)" "$message" >&2
     if [[ -n "${TRIM_TEMP_LOGFILE:-}" ]]; then
         printf '%s\n' "$message" >>"${TRIM_TEMP_LOGFILE}"
     fi

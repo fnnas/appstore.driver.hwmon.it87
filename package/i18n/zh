@@ -1,6 +1,32 @@
+[manifest]
+desc="IT87/IT86系列传感器芯片树外驱动（target_commit_sha）<br>预构建产物支持以下版本<br>6.12.18-trim#3、6.18.6-trim#297、6.18.18-trim#427、6.18.18-trim#570、6.18.18-trim#587、6.18.18-trim#717<br>6.18.18.c788-trim#788、6.18.18.c877-trim#877、6.18.18.c938-trim#938、6.18.18.c952-trim#952、6.18.18.c1032-trim#1032、6.18.18.c1078-trim#1078、6.18.18.c1126-trim#1126、6.18.18.c1168-trim#1168<br>缺少适配当前内核的预构建模块时，支持使用 chroot 在本机编译作为兜底方案。该方式风险较高，建议优先等待预构建版本发布<br>该驱动由社区用户提供并维护<br>如遇问题请直接向社区用户或本项目仓库 issue 反馈，反馈时请提供导出的日志"
+changelog="更新至 target_commit_sha 版本，兼容当前已适配内核"
+
 [wizard]
 install_step_title="内核模块安装方式"
 install_mode_label="请选择安装方式"
 prebuilt_only_label="仅使用预构建模块（推荐）"
 allow_local_build_label="缺失时允许本机编译（高风险，不推荐）"
 local_build_warning="<strong>警告：强烈建议选择“仅使用预构建模块”，并等待适配当前内核的版本发布。</strong><br><br>本机编译仅供能够自行排查并承担内核驱动风险的高级用户使用。编译过程可能长时间占满 CPU、内存和磁盘 I/O，导致设备严重卡顿、服务中断甚至失去响应。<br><br>生成的模块未经预先适配验证，可能无法加载或造成系统不稳定，严重时需要重启设备。"
+
+[runtime]
+unknown_error="未知错误"
+error_prefix="错误"
+prebuilt_dir_missing="未找到适配内核 %s 的 it87 预构建模块目录：%s"
+prebuilt_module_missing="未找到适配内核 %s 的 it87 预构建内核模块，搜索目录：%s"
+install_dir_failed="无法创建 it87 模块安装目录：%s"
+copy_module_failed="无法将 it87 内核模块复制到 %s"
+build_lock_failed="无法创建本机编译锁文件：%s"
+previous_build_failed="上一次 chroot 编译未成功完成。为避免再次进行资源密集型编译，本次已跳过。请重启设备以清空 /tmp，或手动删除 %s 后重试。"
+source_missing="应用包内缺少 it87 源码，无法启动本机编译。"
+fallback_build_started="未找到适配 %s 的 it87 预构建模块，开始执行已允许的 chroot 本机编译。"
+fallback_build_failed="无法在 chroot 中为内核 %s 编译 it87 模块。"
+built_module_missing="chroot 编译已结束，但未生成适配 %s 的 it87 内核模块。"
+module_not_loaded="it87 未加载，继续安装"
+depmod_failed="无法刷新内核模块依赖。"
+module_load_failed="it87 模块已安装，但无法在内核 %s 上加载。"
+kernel_version_required="缺少内核版本参数。"
+output_dir_required="缺少输出目录参数。"
+app_destination_required="缺少 TRIM_APPDEST 环境变量。"
+chroot_build_started="正在 chroot 中为 %s 编译 it87..."
+chroot_build_stored="已将编译生成的模块保存到 %s"

@@ -5,16 +5,16 @@
 - This repository packages the out-of-tree IT87/IT86 hardware-monitoring driver for fnOS on x86_64. Driver source is fetched from `fnnas/it87`; it is not maintained here.
 - `.github/workflows/test_release.yml` owns the driver commit pin, application version, kernel-image matrix, artifact staging, packaging, and optional release.
 - `package/cmd/main` selects and installs modules; `common` provides logging and cleanup; `build_module_chroot` implements the optional local-build fallback.
-- `package/manifest` is a template. Keep `target_commit_sha` and `this_pack_manifest_*` placeholders for CI substitution. Wizard changes must keep `package/i18n/zh` and `package/i18n/en` aligned.
+- `package/manifest` is a template; descriptions and changelogs reference `[manifest]` keys in `package/i18n/zh` and `package/i18n/en`. Keep build-time placeholders in both the manifest and translations for CI substitution. Keep both catalogs aligned when changing wizard or runtime messages.
 - `app/ui/.gitkep` preserves the UI directory required by packaging. Keep generated modules, source checkouts, and archives out of commits; `.idea/` and `tmp/` contain ignored local state.
 
 ## Adding kernel support
 
-Update these five files together:
+Update these locations together:
 
 1. `.github/workflows/test_release.yml`: add the build matrix row and matching artifact download; increment `this_pack_manifest_version` using the existing patch-version sequence.
 2. `package/cmd/main`: add the exact release-to-payload mapping in `module_payload_dir`.
-3. `package/manifest`: extend the supported kernel/build list, retaining its HTML formatting.
+3. `package/i18n/zh` and `package/i18n/en`: extend the supported kernel/build list in `manifest.desc`, retaining its HTML formatting. Keep `package/manifest` references intact.
 4. `scripts/validate-package.sh`: require the new module directory in `app.tgz`.
 5. `readme.md`: extend the supported kernel list.
 
@@ -30,7 +30,9 @@ actionlint .github/workflows/test_release.yml
 git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check
 ```
 
-The shell validator runs Bash syntax checks and ShellCheck; Actionlint separately checks workflow semantics. Verify matrix rows, artifact downloads, validator entries, and runtime mappings agree. Test routing with mocked `uname` and system commands, without installing or loading modules. Report which checks actually ran.
+The shell validator runs Bash syntax checks, ShellCheck, and translation key/parameter/reference/kernel-list checks; Actionlint separately checks workflow semantics. Verify matrix rows, artifact downloads, validator entries, and runtime mappings agree. Test routing with mocked `uname` and system commands, without installing or loading modules. Report which checks actually ran.
+
+Runtime messages use `[runtime]` catalogs and `i18n_message` / `report_error` helpers. CI copies the rendered catalogs into `app/app/i18n/`; scripts read `${TRIM_APPDEST}/app/i18n` with a repository-relative fallback. Select language using `TRIM_SYS_LANGUAGE`, then `LC_ALL`, `LC_MESSAGES`, or `LANG`; Chinese variants use `zh`, with English as the fallback. Use ordered `%s` placeholders, and keep human-readable strings out of runtime call sites.
 
 Windows checkouts can contain CRLF or mixed endings; the workflow is committed with CRLF and shell scripts with LF. Inspect `git ls-files --eol`, preserve existing formats, and use temporary LF-normalized copies for shell checks when needed. Avoid repository-wide line-ending rewrites.
 
@@ -38,8 +40,9 @@ Run `bash scripts/validate-package.sh <staged-package-dir>` only when a staged p
 
 ## Runtime and release conventions
 
+- Pin CI jobs to `ubuntu-24.04` to avoid host OS migrations from `ubuntu-latest`. Use action releases that natively declare the Node 24 runtime or newer; kernel compilation still uses the matrix's fnOS container images.
 - Match nearby Bash style: four-space function indentation, quoted paths, and shared helpers. Keep errors visible through `report_error` / `TRIM_TEMP_LOGFILE`.
-- Keep local compilation opt-in (`prebuilt_only` is the default), and preserve the failed-build lock behavior. Lifecycle scripts modify `/lib/modules`, run `modprobe`/`depmod`, and may mount/chroot; do not execute them directly on a development host for validation.
+- The installation wizard defaults to `allow_local_build`; compile locally only when the selected mode permits it and no prebuilt payload exists. Preserve the failed-build lock behavior. Lifecycle scripts modify `/lib/modules`, run `modprobe`/`depmod`, and may mount/chroot; do not execute them directly on a development host for validation.
 - Keep `ignore_resource_conflict=1` on module loading, not on `modprobe -r`.
 - Releases use manual `workflow_dispatch`; `make_release` defaults to false. Keep the short release-title format separate from archive/asset filenames.
 

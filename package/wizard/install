@@ -6,7 +6,7 @@
         "type": "radio",
         "field": "wizard_module_install_mode",
         "label": "${wizard.install_mode_label}",
-        "initValue": "prebuilt_only",
+        "initValue": "allow_local_build",
         "options": [
           {
             "label": "${wizard.prebuilt_only_label}",
