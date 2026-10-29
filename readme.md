@@ -10,9 +10,8 @@
 
 ## 支持的内核版本
 
-- `6.12.18-trim`
-- `6.18.6-trim`
-- `6.18.18-trim`
+默认构建并打包以下内核的预构建模块：
+
 - `6.18.18.c788-trim`
 - `6.18.18.c877-trim`
 - `6.18.18.c938-trim`
@@ -21,6 +20,7 @@
 - `6.18.18.c1078-trim`
 - `6.18.18.c1126-trim`
 - `6.18.18.c1168-trim`
+- `6.18.18.c1179-trim`
 
 ## 支持的架构
 
@@ -32,17 +32,19 @@
 
 ## 构建与发布
 
-GitHub Actions 使用单个 `Test Release` 工作流完成构建、打包和发布检查。构建阶段通过 matrix 覆盖当前支持的所有内核模块变体。
+GitHub Actions 使用 `Test Release` 工作流完成构建、打包和发布检查，两组内核矩阵共用 `kernel-build.yml` 编译流程。`build` 默认构建带 `.c` 编号的内核；不带 `.c` 编号的旧内核仅保留用于调试，由 `build_old_kernels` 单独控制，默认关闭。启用后，会额外构建并打包全部 6 个旧内核模块变体，旧内核不列入对外支持列表。
 
 打包阶段直接在工作流中的 `package/manifest` 上替换构建时占位值，再把生成的 `app.tgz` 放入 `package/` 目录并打包最终应用包。
+
+已有暂存包可通过 `bash scripts/validate-package.sh <staged-package-dir>` 校验；如果构建时启用了旧内核，使用 `BUILD_OLD_KERNELS=true bash scripts/validate-package.sh <staged-package-dir>`，同时检查旧内核产物。
 
 发布由手动触发参数 `make_release` 控制，默认不会创建 GitHub Release。只有显式打开 `make_release` 时，工作流才会创建 Release 并上传产物。
 
 ## 国际化
 
-应用描述、更新说明、安装向导和运行提示支持中文与英文，文案统一维护在 `package/i18n/zh` 和 `package/i18n/en`。运行脚本优先使用飞牛系统提供的 `TRIM_SYS_LANGUAGE`，未设置时依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`；中文地区代码使用中文，其他语言回退到英文。
+应用描述、更新说明、安装向导和运行提示支持中文、英文与日文，文案统一维护在 `package/i18n/zh`、`package/i18n/en` 和 `package/i18n/ja-JP`。运行脚本优先使用飞牛系统提供的 `TRIM_SYS_LANGUAGE`，未设置时依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`；中文地区代码使用中文，`ja`、`ja-JP`、`ja_JP.UTF-8` 等日语代码使用日文，其他语言或缺失译文回退到英文。
 
-应用描述和更新说明中的驱动提交标识由 CI 与 `package/manifest` 一起替换，处理后的语言文件也会随应用 payload 分发供运行脚本读取。新增内核支持时，需要同步更新两份语言资源中的支持列表。可在仓库根目录运行 `bash scripts/validate-workflows-and-scripts.sh` 检查脚本，以及两种语言的键、参数数量、引用和内核支持列表是否一致。
+应用描述和更新说明中的驱动提交标识由 CI 与 `package/manifest` 一起替换，处理后的语言文件也会随应用 payload 分发供运行脚本读取。新增内核支持时，需要同步更新三份语言资源中的支持列表。可在仓库根目录运行 `bash scripts/validate-workflows-and-scripts.sh` 检查脚本，以及三种语言的键、参数数量、引用和内核支持列表是否一致。
 
 ## 故障诊断
 可以通过筛选it87相关日志观察  

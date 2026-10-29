@@ -20,16 +20,23 @@ on:
         required: true
         type: boolean
         default: true
+      build_old_kernels:
+        description: 'Build old kernels without a .c build identifier'
+        required: true
+        type: boolean
+        default: false
 
 env:
   proj_name: "ite-it87"
   target_commit_sha: "bd7a566"
-  this_pack_manifest_version: "1.0.15"
+  this_pack_manifest_version: "1.0.16"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
   validate_workflow:
     runs-on: ubuntu-24.04
+    outputs:
+      target_commit_sha: ${{ env.target_commit_sha }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v6
@@ -41,11 +48,11 @@ jobs:
         run: |
           bash scripts/validate-workflows-and-scripts.sh
 
-  build:
-    runs-on: ubuntu-24.04
-    container:
-      image: ${{ matrix.container_image }}
-      options: -v ${{ github.workspace }}:${{ github.workspace }}
+  build_old_kernels:
+    name: Old kernels
+    if: ${{ inputs.build_old_kernels }}
+    needs: validate_workflow
+    uses: ./.github/workflows/kernel-build.yml
     strategy:
       fail-fast: false
       matrix:
@@ -80,6 +87,22 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18-trim-717-amd64"
             artifact_name: "ite-it87-6.18.18-trim-717-amd64"
             module_dir: "ite-it87_6.18.18-trim-717-amd64"
+    with:
+      target_commit_sha: ${{ needs.validate_workflow.outputs.target_commit_sha }}
+      kernel_name: ${{ matrix.kernel_name }}
+      kernel_ver: ${{ matrix.kernel_ver }}
+      container_image: ${{ matrix.container_image }}
+      artifact_name: ${{ matrix.artifact_name }}
+      module_dir: ${{ matrix.module_dir }}
+      enable_ccache: ${{ inputs.enable_ccache }}
+
+  build:
+    needs: validate_workflow
+    uses: ./.github/workflows/kernel-build.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - kernel_name: "6.18.18.c788-trim-amd64"
             kernel_ver: "6.18.18.c788-trim"
             container_image: "makedie/fnos:kernHead-6.18.18.c788-trim-amd64"
@@ -120,103 +143,25 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18.c1168-trim-amd64"
             artifact_name: "ite-it87-6.18.18.c1168-trim-amd64"
             module_dir: "ite-it87_6.18.18.c1168-trim-amd64"
-    env:
+          - kernel_name: "6.18.18.c1179-trim-amd64"
+            kernel_ver: "6.18.18.c1179-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18.c1179-trim-amd64"
+            artifact_name: "ite-it87-6.18.18.c1179-trim-amd64"
+            module_dir: "ite-it87_6.18.18.c1179-trim-amd64"
+    with:
+      target_commit_sha: ${{ needs.validate_workflow.outputs.target_commit_sha }}
       kernel_name: ${{ matrix.kernel_name }}
       kernel_ver: ${{ matrix.kernel_ver }}
-      CCACHE_DIR: ${{ github.workspace }}/.ccache/${{ matrix.kernel_name }}
-      CCACHE_BASEDIR: ${{ github.workspace }}
-      CCACHE_COMPRESS: "true"
-      CCACHE_MAXSIZE: 1G
-      CCACHE_KEY: ccache-${{ matrix.kernel_name }}-it87-${{ github.run_id }}-${{ github.run_attempt }}
-      CCACHE_RESTORE_PREFIX: ccache-${{ matrix.kernel_name }}-it87-
-    steps:
-      - name: Restore ccache
-        if: ${{ inputs.enable_ccache }}
-        id: restore_ccache
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.CCACHE_KEY }}
-          restore-keys: |
-            ${{ env.CCACHE_RESTORE_PREFIX }}
-      - name: Check out driver source
-        run: |
-          git clone https://github.com/fnnas/it87.git
-          cd it87 && git reset --hard "${{ env.target_commit_sha }}"
-      - name: Set up ccache
-        if: ${{ inputs.enable_ccache }}
-        id: setup_ccache
-        shell: bash
-        run: |
-          apt-get update
-          apt-get install -y ccache
-          mkdir -p "$CCACHE_DIR" "$GITHUB_WORKSPACE/ccache-bin"
-          ccache_path="$(command -v ccache)"
-          declare -A seen=()
-          while IFS= read -r compiler; do
-            case "$compiler" in
-              gcc|g++|cc|c++|gcc-[0-9]*|g++-[0-9]*|cc-[0-9]*|c++-[0-9]*|*-gcc|*-g++|*-cc|*-c++|*-gcc-[0-9]*|*-g++-[0-9]*|*-cc-[0-9]*|*-c++-[0-9]*)
-                [[ -n "${seen[$compiler]+x}" ]] && continue
-                compiler_path="$(command -v "$compiler" || true)"
-                [[ -x "$compiler_path" ]] || continue
-                ln -sf "$ccache_path" "$GITHUB_WORKSPACE/ccache-bin/$compiler"
-                seen[$compiler]=1
-                ;;
-            esac
-          done < <(compgen -c | sort -u)
-          echo "$GITHUB_WORKSPACE/ccache-bin" >> "$GITHUB_PATH"
-          ccache --version
-          ccache --set-config=cache_dir="$CCACHE_DIR"
-          ccache --set-config=max_size="$CCACHE_MAXSIZE"
-          ccache --set-config=compression=true
-          ccache --set-config=compiler_check=content
-          ccache --set-config=hash_dir=false
-          ccache --set-config=path="$PATH"
-          ccache --zero-stats
-          ccache --show-config
-          echo "ccache wrappers:"
-          find "$GITHUB_WORKSPACE/ccache-bin" -maxdepth 1 -type l -printf '%f -> %l\n' | sort
-      - name: Build kernel module for matrix row
-        shell: bash
-        run: |
-          if command -v ccache >/dev/null 2>&1; then
-            echo "compiler resolution before build:"
-            for compiler in cc gcc g++ c++ x86_64-linux-gnu-gcc x86_64-linux-gnu-g++; do
-              if command -v "$compiler" >/dev/null 2>&1; then
-                echo "$compiler -> $(command -v "$compiler")"
-              fi
-            done
-          fi
-          cd it87
-          # shellcheck disable=SC2046
-          make -j$(nproc)
-      - name: Show ccache stats
-        if: ${{ always() && inputs.enable_ccache }}
-        shell: bash
-        run: |
-          ccache --show-stats || true
-      - name: Save ccache
-        if: ${{ always() && inputs.enable_ccache && steps.setup_ccache.outcome == 'success' }}
-        uses: actions/cache/save@v5
-        continue-on-error: true
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.CCACHE_KEY }}
-      - name: Stage kernel module artifact
-        run: |
-          mkdir -p "upload/${{ matrix.module_dir }}"
-          cp ./it87/*.ko "./upload/${{ matrix.module_dir }}/"
-          ls -la "./upload/${{ matrix.module_dir }}/"
-      - name: Upload matrix build artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: upload/${{ matrix.module_dir }}
+      container_image: ${{ matrix.container_image }}
+      artifact_name: ${{ matrix.artifact_name }}
+      module_dir: ${{ matrix.module_dir }}
+      enable_ccache: ${{ inputs.enable_ccache }}
 
   prune_ccache:
-    if: ${{ always() && inputs.enable_ccache && needs.build.result == 'success' }}
+    if: ${{ !cancelled() && inputs.enable_ccache && needs.build.result == 'success' && (!inputs.build_old_kernels || needs.build_old_kernels.result == 'success') }}
     needs:
       - build
+      - build_old_kernels
     runs-on: ubuntu-24.04
     permissions:
       actions: write
@@ -277,39 +222,47 @@ jobs:
           done < "$delete_file"
 
   pack_app_tgz:
+    if: ${{ !cancelled() && needs.validate_workflow.result == 'success' && needs.build.result == 'success' && (!inputs.build_old_kernels || needs.build_old_kernels.result == 'success') }}
     needs:
       - validate_workflow
       - build
+      - build_old_kernels
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository code
         uses: actions/checkout@v6
       - name: Download matrix artifact 6.12.18-trim_3
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.12.18-trim_3
           path: app/app/ite-it87_6.12.18-trim_3/
       - name: Download matrix artifact 6.18.6-trim-297-amd64
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.6-trim-297-amd64
           path: app/app/ite-it87_6.18.6-trim-297-amd64/
       - name: Download matrix artifact 6.18.18-trim-427-amd64
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-427-amd64
           path: app/app/ite-it87_6.18.18-trim-427-amd64/
       - name: Download matrix artifact 6.18.18-trim-570-amd64
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-570-amd64
           path: app/app/ite-it87_6.18.18-trim-570-amd64/
       - name: Download matrix artifact 6.18.18-trim-587-amd64
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-587-amd64
           path: app/app/ite-it87_6.18.18-trim-587-amd64/
       - name: Download matrix artifact 6.18.18-trim-717-amd64
+        if: ${{ inputs.build_old_kernels }}
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.proj_name }}-6.18.18-trim-717-amd64
@@ -354,6 +307,11 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18.c1168-trim-amd64
           path: app/app/ite-it87_6.18.18.c1168-trim-amd64/
+      - name: Download matrix artifact 6.18.18.c1179-trim-amd64
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ env.proj_name }}-6.18.18.c1179-trim-amd64
+          path: app/app/ite-it87_6.18.18.c1179-trim-amd64/
 
       - name: Stage driver source for optional local builds
         shell: bash
@@ -386,17 +344,19 @@ jobs:
             -e "s|this_pack_manifest_version|${{ env.this_pack_manifest_version }}|g" \
             -e "s|this_pack_manifest_arch|${{ env.this_pack_manifest_arch }}|g" \
             -e "s|this_pack_manifest_platform|${{ env.this_pack_manifest_platform }}|g" \
-            package/manifest package/i18n/zh package/i18n/en
+            package/manifest package/i18n/zh package/i18n/en package/i18n/ja-JP
       - name: Stage runtime translations
         run: |
           mkdir -p app/app/i18n
-          cp package/i18n/zh package/i18n/en app/app/i18n/
+          cp package/i18n/zh package/i18n/en package/i18n/ja-JP app/app/i18n/
       - name: Package app.tgz from staged app files
         run: |
           cd app/
           tar zcvf app.tgz app ui
           cp app.tgz ../package/app.tgz
       - name: Validate packaged files
+        env:
+          BUILD_OLD_KERNELS: ${{ inputs.build_old_kernels }}
         run: |
           bash scripts/validate-package.sh package
       - name: Package final appstore archive
@@ -410,7 +370,8 @@ jobs:
 
   release:
     needs: pack_app_tgz
-    if: ${{ inputs.make_release }}
+    # Override implicit success() when optional ancestor jobs are skipped.
+    if: ${{ !cancelled() && inputs.make_release && needs.pack_app_tgz.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write

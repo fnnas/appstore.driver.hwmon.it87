@@ -1,0 +1,32 @@
+[manifest]
+desc="IT87/IT86 系列監視用集積囘路の、中核本體とは別途管理・構築する機器制御算譜にて候（target_commit_sha）<br>事前翻譯濟追加算譜は下記の中核に對應仕候<br>6.18.18.c788-trim#788、6.18.18.c877-trim#877、6.18.18.c938-trim#938、6.18.18.c952-trim#952、6.18.18.c1032-trim#1032、6.18.18.c1078-trim#1078、6.18.18.c1126-trim#1126、6.18.18.c1168-trim#1168<br>6.18.18.c1179-trim#1179<br>御使用中核用の事前翻譯濟追加算譜無き場合、代替手段として本機の chroot 内で翻譯可能に候。危險性の高き方法につき、事前翻譯濟對應版の公開を待つ方法を推奬仕候。<br>本算譜は利用者有志が提供・保守仕候。<br>不具合は利用者有志又は本算譜保管庫の障害報告欄へ直接御報告願ひ候。報告時は書出し記錄を添附願ひ候。"
+changelog="機器制御算譜を target_commit_sha 版に更新し、現在對應する各中核に適合させ候。"
+
+[wizard]
+install_step_title="中核追加算譜の導入方式"
+install_mode_label="導入方式の御選定願ひ候"
+prebuilt_only_label="事前翻譯濟追加算譜のみ使用（推奬）"
+allow_local_build_label="事前翻譯濟追加算譜無き場合は本機翻譯を許可（危險性大・非推奬）"
+local_build_warning="<strong>警告：事前翻譯濟追加算譜のみ使用し、御使用中核用の對應版公開を待つ方法を强く推奬致し候。</strong><br><br>本機翻譯は、中核用機器制御算譜に伴ふ危險を自ら引受け、自力で原因調査可能な熟練者のみを對象と致し候。處理中は中央處理裝置の處理能力、主記憶の容量及び補助記憶の入出力能力を長時間使ひ盡す恐れが御座候。其の結果、裝置の著しい遲延、提供中の機能の中斷、又は應答停止を招く恐れが御座候。<br><br>生成した追加算譜は事前の中核適合性檢證を經てをらず候。讀込不能又は裝置全體の動作不安定を招く恐れが御座候。重大な障害の際は裝置の再起動を要し候。"
+
+[runtime]
+unknown_error="原因不明の異常に候"
+error_prefix="異常"
+prebuilt_dir_missing="中核 %s 用の事前翻譯濟 it87 追加算譜を納めた目錄が見當たらず候：%s"
+prebuilt_module_missing="中核 %s 用の事前翻譯濟 it87 追加算譜が見當たらず候。檢索目錄：%s"
+install_dir_failed="it87 中核追加算譜の導入先目錄を作成出來ず候：%s"
+copy_module_failed="it87 中核追加算譜を %s へ複寫出來ず候"
+build_lock_failed="本機翻譯の再試行抑止用鎖錠帳を作成出來ず候：%s"
+previous_build_failed="前囘の chroot 内翻譯は正常終了せず候。高負荷處理の再試行防止の爲、今囘の翻譯は省略仕候。裝置の再起動で /tmp を空にするか、%s を手動削除の上、再試行願ひ候。"
+source_missing="本配布物に it87 の原始算譜無き爲、本機翻譯を開始出來ず候。"
+fallback_build_started="%s 用の事前翻譯濟 it87 追加算譜無き爲、御許可に從ひ本機の chroot 内で翻譯開始致し候。"
+fallback_build_failed="chroot 内で中核 %s 用 it87 追加算譜の翻譯に失敗仕候。"
+built_module_missing="chroot 内翻譯は終了せしも、%s 用 it87 中核追加算譜は生成されず候。"
+module_not_loaded="it87 未讀込につき、導入を續行仕候"
+depmod_failed="中核追加算譜の依存關係を更新出來ず候。"
+module_load_failed="it87 追加算譜は導入濟なれども、中核 %s への讀込に失敗仕候。"
+kernel_version_required="中核版の引數が缺け候。"
+output_dir_required="出力先目錄の引數が缺け候。"
+app_destination_required="環境變數 TRIM_APPDEST が缺け候。"
+chroot_build_started="chroot 内にて %s 用 it87 を翻譯中に候。"
+chroot_build_stored="翻譯濟追加算譜を %s に保存致し候。"

@@ -16,6 +16,12 @@ package_common_scripts=(
   package/cmd/common
 )
 
+translation_files=(
+  package/i18n/en
+  package/i18n/zh
+  package/i18n/ja-JP
+)
+
 script_files=()
 if [[ -d scripts ]]; then
   while IFS= read -r script_file; do
@@ -69,12 +75,14 @@ translation_schema() {
 
 print_step "Checking translation keys and parameters"
 english_schema=$(translation_schema package/i18n/en)
-chinese_schema=$(translation_schema package/i18n/zh)
-if [[ "$english_schema" != "$chinese_schema" ]]; then
-  echo "English and Chinese translation keys or parameters differ." >&2
-  diff -u <(printf '%s\n' "$english_schema") <(printf '%s\n' "$chinese_schema") || true
-  exit 1
-fi
+for translation_file in "${translation_files[@]:1}"; do
+  localized_schema=$(translation_schema "$translation_file")
+  if [[ "$english_schema" != "$localized_schema" ]]; then
+    echo "Translation keys or parameters differ from English: ${translation_file}" >&2
+    diff -u <(printf '%s\n' "$english_schema") <(printf '%s\n' "$localized_schema") || true
+    exit 1
+  fi
+done
 
 translation_keys=$(printf '%s\n' "$english_schema" | cut -d: -f1)
 template_references=$(grep -hoE '\$\{[a-z_]+\.[a-z_]+\}' package/manifest package/wizard/install | sed 's/^${//; s/}$//')
@@ -88,10 +96,12 @@ done < <(printf '%s\n' "$template_references" "$runtime_references" | sort -u)
 
 print_step "Checking translated kernel support lists"
 english_kernels=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.c[0-9]+)?-trim#[0-9]+' package/i18n/en | sort)
-chinese_kernels=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.c[0-9]+)?-trim#[0-9]+' package/i18n/zh | sort)
-if [[ "$english_kernels" != "$chinese_kernels" ]]; then
-  echo "English and Chinese kernel support lists differ." >&2
-  exit 1
-fi
+for translation_file in "${translation_files[@]:1}"; do
+  localized_kernels=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.c[0-9]+)?-trim#[0-9]+' "$translation_file" | sort)
+  if [[ "$english_kernels" != "$localized_kernels" ]]; then
+    echo "Kernel support list differs from English: ${translation_file}" >&2
+    exit 1
+  fi
+done
 
 print_step "Workflow and shell validation completed"

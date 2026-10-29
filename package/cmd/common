@@ -36,6 +36,9 @@ init_i18n() {
         zh|zh[-_.]*)
             load_runtime_translations "${translations_dir}/zh"
             ;;
+        ja|ja[-_.]*)
+            load_runtime_translations "${translations_dir}/ja-JP"
+            ;;
     esac
 }
 

@@ -8,6 +8,15 @@ fi
 
 package_dir=$1
 app_archive="${package_dir}/app.tgz"
+build_old_kernels=${BUILD_OLD_KERNELS:-false}
+
+case "$build_old_kernels" in
+    true|false) ;;
+    *)
+        echo "BUILD_OLD_KERNELS must be true or false." >&2
+        exit 2
+        ;;
+esac
 
 required_files=(
     "package/manifest:manifest"
@@ -25,6 +34,7 @@ required_files=(
     "package/wizard/install:wizard/install"
     "package/i18n/zh:i18n/zh"
     "package/i18n/en:i18n/en"
+    "package/i18n/ja-JP:i18n/ja-JP"
     "package/app.tgz:app.tgz"
 )
 
@@ -48,12 +58,14 @@ require_tar_entry() {
     fi
 }
 
-require_tar_entry "app/ite-it87_6.12.18-trim_3"
-require_tar_entry "app/ite-it87_6.18.6-trim-297-amd64"
-require_tar_entry "app/ite-it87_6.18.18-trim-427-amd64"
-require_tar_entry "app/ite-it87_6.18.18-trim-570-amd64"
-require_tar_entry "app/ite-it87_6.18.18-trim-587-amd64"
-require_tar_entry "app/ite-it87_6.18.18-trim-717-amd64"
+if [ "$build_old_kernels" = true ]; then
+    require_tar_entry "app/ite-it87_6.12.18-trim_3"
+    require_tar_entry "app/ite-it87_6.18.6-trim-297-amd64"
+    require_tar_entry "app/ite-it87_6.18.18-trim-427-amd64"
+    require_tar_entry "app/ite-it87_6.18.18-trim-570-amd64"
+    require_tar_entry "app/ite-it87_6.18.18-trim-587-amd64"
+    require_tar_entry "app/ite-it87_6.18.18-trim-717-amd64"
+fi
 require_tar_entry "app/ite-it87_6.18.18.c788-trim-amd64"
 require_tar_entry "app/ite-it87_6.18.18.c877-trim-amd64"
 require_tar_entry "app/ite-it87_6.18.18.c938-trim-amd64"
@@ -62,8 +74,10 @@ require_tar_entry "app/ite-it87_6.18.18.c1032-trim-amd64"
 require_tar_entry "app/ite-it87_6.18.18.c1078-trim-amd64"
 require_tar_entry "app/ite-it87_6.18.18.c1126-trim-amd64"
 require_tar_entry "app/ite-it87_6.18.18.c1168-trim-amd64"
+require_tar_entry "app/ite-it87_6.18.18.c1179-trim-amd64"
 require_tar_entry "app/i18n/zh"
 require_tar_entry "app/i18n/en"
+require_tar_entry "app/i18n/ja-JP"
 require_tar_entry "app/it87-source/COPYING"
 require_tar_entry "app/it87-source/Makefile"
 require_tar_entry "app/it87-source/VERSION"

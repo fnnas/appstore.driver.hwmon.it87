@@ -1,0 +1,6 @@
+文件：J0002146.pdf
+题名：情報処理に関する標準化調査報告書
+出版机构：財団法人 日本情報処理開発協会（JIPDEC）
+出版时间：1981 年 3 月（昭和 56 年 3 月）
+原始地址：https://www.jipdec.or.jp/archives/publications/J0002146.pdf
+SHA-256：e2f572bfdde8b61c8a971b0afdf1ba3dc356ac2cd8b2218d4ea8d9cc2a6b2bbd
