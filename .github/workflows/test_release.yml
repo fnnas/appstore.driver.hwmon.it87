@@ -29,7 +29,7 @@ on:
 env:
   proj_name: "ite-it87"
   target_commit_sha: "bd7a566"
-  this_pack_manifest_version: "1.0.16"
+  this_pack_manifest_version: "1.0.17"
   this_pack_manifest_arch: "x86_64"
   this_pack_manifest_platform: "x86"
 jobs:
@@ -148,6 +148,11 @@ jobs:
             container_image: "makedie/fnos:kernHead-6.18.18.c1179-trim-amd64"
             artifact_name: "ite-it87-6.18.18.c1179-trim-amd64"
             module_dir: "ite-it87_6.18.18.c1179-trim-amd64"
+          - kernel_name: "6.18.18.c1186-trim-amd64"
+            kernel_ver: "6.18.18.c1186-trim"
+            container_image: "makedie/fnos:kernHead-6.18.18.c1186-trim-amd64"
+            artifact_name: "ite-it87-6.18.18.c1186-trim-amd64"
+            module_dir: "ite-it87_6.18.18.c1186-trim-amd64"
     with:
       target_commit_sha: ${{ needs.validate_workflow.outputs.target_commit_sha }}
       kernel_name: ${{ matrix.kernel_name }}
@@ -312,6 +317,11 @@ jobs:
         with:
           name: ${{ env.proj_name }}-6.18.18.c1179-trim-amd64
           path: app/app/ite-it87_6.18.18.c1179-trim-amd64/
+      - name: Download matrix artifact 6.18.18.c1186-trim-amd64
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ env.proj_name }}-6.18.18.c1186-trim-amd64
+          path: app/app/ite-it87_6.18.18.c1186-trim-amd64/
 
       - name: Stage driver source for optional local builds
         shell: bash
